@@ -3,13 +3,13 @@ package repoui
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/leo/leo-cli/internal/store"
+	"github.com/leo/leo-cli/internal/termio"
 )
 
 type repoItem struct {
@@ -45,13 +45,13 @@ type model struct {
 }
 
 func Run(repos []store.Repo) (string, bool, error) {
-	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	terminal, err := termio.Open()
 	if err != nil {
-		return "", false, fmt.Errorf("open terminal: %w", err)
+		return "", false, err
 	}
-	defer tty.Close()
+	defer terminal.Close()
 
-	return runWithTerminal(repos, tty, tty)
+	return runWithTerminal(repos, terminal.Input, terminal.Output)
 }
 
 func runWithTerminal(repos []store.Repo, input io.Reader, output io.Writer) (string, bool, error) {

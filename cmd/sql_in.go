@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leo/leo-cli/internal/termio"
 	"github.com/spf13/cobra"
 )
 
@@ -243,16 +244,16 @@ type sqlInFormatItem struct {
 }
 
 func runSQLInPicker(source sqlInSource) (sqlInSelection, bool, error) {
-	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	terminal, err := termio.Open()
 	if err != nil {
-		return sqlInSelection{}, false, fmt.Errorf("open terminal: %w", err)
+		return sqlInSelection{}, false, err
 	}
-	defer tty.Close()
+	defer terminal.Close()
 
-	restoreRenderer := configureSQLInRenderer(tty)
+	restoreRenderer := configureSQLInRenderer(terminal.Output)
 	defer restoreRenderer()
 
-	program := tea.NewProgram(newSQLInPickerModel(source), tea.WithInput(tty), tea.WithOutput(tty), tea.WithAltScreen())
+	program := tea.NewProgram(newSQLInPickerModel(source), tea.WithInput(terminal.Input), tea.WithOutput(terminal.Output), tea.WithAltScreen())
 	finalModel, err := program.Run()
 	if err != nil {
 		return sqlInSelection{}, false, err
