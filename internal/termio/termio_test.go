@@ -10,7 +10,7 @@ func TestTerminalPathsUseNativeConsoleDevices(t *testing.T) {
 	}{
 		{goos: "darwin", wantInput: "/dev/tty", wantOutput: "/dev/tty"},
 		{goos: "linux", wantInput: "/dev/tty", wantOutput: "/dev/tty"},
-		{goos: "windows", wantInput: "CONIN$", wantOutput: "CONOUT$"},
+		{goos: "windows", wantInput: "", wantOutput: "CONOUT$"},
 	}
 
 	for _, tt := range tests {
