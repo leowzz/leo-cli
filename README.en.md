@@ -101,10 +101,11 @@ In the interactive picker:
 
 - Left/Right: switch csv columns.
 - Up/Down: switch output formats.
+- u: toggle unique/original values.
 - Enter: copy the current result.
 - Esc: cancel.
 
-Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
+Values are unique by default, preserving first-seen order. Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
 
 ## Docker Image Copy
 

@@ -32,8 +32,9 @@ type sqlInSource struct {
 }
 
 type sqlInSelection struct {
-	column int
-	format sqlInFormat
+	column   int
+	format   sqlInFormat
+	original bool
 }
 
 type sqlInPicker func(sqlInSource) (sqlInSelection, bool, error)
@@ -80,7 +81,7 @@ func runSQLInSource(source sqlInSource, stdout io.Writer, writeClipboard func(st
 		return err
 	}
 
-	values := source.values(selection.column)
+	values := source.valuesForMode(selection.column, selection.original)
 	if len(values) == 0 {
 		return fmt.Errorf("no values found")
 	}
@@ -180,15 +181,27 @@ func sqlInSourceFromCSV(records [][]string, hasHeader bool) (sqlInSource, error)
 }
 
 func (s sqlInSource) values(column int) []string {
+	return s.valuesForMode(column, false)
+}
+
+func (s sqlInSource) valuesForMode(column int, original bool) []string {
 	values := make([]string, 0, len(s.rows))
+	seen := map[string]struct{}{}
 	for _, row := range s.rows {
 		if column >= len(row) {
 			continue
 		}
 		value := strings.TrimSpace(row[column])
-		if value != "" {
-			values = append(values, value)
+		if value == "" {
+			continue
 		}
+		if !original {
+			if _, ok := seen[value]; ok {
+				continue
+			}
+			seen[value] = struct{}{}
+		}
+		values = append(values, value)
 	}
 	return values
 }
@@ -233,14 +246,16 @@ var sqlInFormats = []sqlInFormat{
 type sqlInPickerModel struct {
 	source   sqlInSource
 	column   int
+	original bool
 	list     list.Model
 	accepted bool
 }
 
 type sqlInFormatItem struct {
-	format sqlInFormat
-	source sqlInSource
-	column int
+	format   sqlInFormat
+	source   sqlInSource
+	column   int
+	original bool
 }
 
 func runSQLInPicker(source sqlInSource) (sqlInSelection, bool, error) {
@@ -262,7 +277,7 @@ func runSQLInPicker(source sqlInSource) (sqlInSelection, bool, error) {
 	if !ok {
 		return sqlInSelection{}, false, fmt.Errorf("unexpected UI model type %T", finalModel)
 	}
-	return sqlInSelection{column: model.column, format: model.selectedFormat()}, model.accepted, nil
+	return sqlInSelection{column: model.column, format: model.selectedFormat(), original: model.original}, model.accepted, nil
 }
 
 func newSQLInPickerModel(source sqlInSource) sqlInPickerModel {
@@ -293,6 +308,12 @@ func (m sqlInPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.moveColumn(-1), nil
 		case "right", "l":
 			return m.moveColumn(1), nil
+		case "u":
+			m.original = !m.original
+			index := m.list.Index()
+			m.list.SetItems(m.formatItems())
+			m.list.Select(index)
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		m.list.SetSize(msg.Width, maxInt(1, msg.Height-6))
@@ -311,10 +332,11 @@ func (m sqlInPickerModel) View() string {
 	fmt.Fprintln(&b, m.list.Styles.Title.Render(m.list.Title))
 	fmt.Fprintln(&b)
 	fmt.Fprintf(&b, "字段: %s\n", m.columnLine())
-	fmt.Fprintf(&b, "数量: %d\n", len(m.source.values(m.column)))
+	fmt.Fprintf(&b, "模式: %s\n", m.modeLabel())
+	fmt.Fprintf(&b, "数量: %d\n", len(m.source.valuesForMode(m.column, m.original)))
 	fmt.Fprintf(&b, "预览: %s\n\n", mutedSQLInStyle.Render(previewSQLIn(m.result(), 120)))
 	b.WriteString(l.View())
-	fmt.Fprintln(&b, "\n←/→ 切字段 · ↑/↓ 切格式 · enter 复制 · esc 取消")
+	fmt.Fprintln(&b, "\n←/→ 切字段 · ↑/↓ 切格式 · u 切唯一/原始 · enter 复制 · esc 取消")
 	return b.String()
 }
 
@@ -341,16 +363,23 @@ func (m sqlInPickerModel) columnLine() string {
 	return strings.Join(parts, "  ")
 }
 
+func (m sqlInPickerModel) modeLabel() string {
+	if m.original {
+		return "原始"
+	}
+	return "唯一"
+}
+
 func (m sqlInPickerModel) formatItems() []list.Item {
 	items := make([]list.Item, 0, len(sqlInFormats))
 	for _, format := range sqlInFormats {
-		items = append(items, sqlInFormatItem{format: format, source: m.source, column: m.column})
+		items = append(items, sqlInFormatItem{format: format, source: m.source, column: m.column, original: m.original})
 	}
 	return items
 }
 
 func (m sqlInPickerModel) result() string {
-	values := m.source.values(m.column)
+	values := m.source.valuesForMode(m.column, m.original)
 	if len(values) == 0 {
 		return ""
 	}
@@ -387,7 +416,7 @@ func (i sqlInFormatItem) Title() string {
 }
 
 func (i sqlInFormatItem) Description() string {
-	values := i.source.values(i.column)
+	values := i.source.valuesForMode(i.column, i.original)
 	if len(values) == 0 {
 		return "0 values"
 	}

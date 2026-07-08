@@ -60,7 +60,7 @@ func TestRenderSQLInEscapesQuotedValues(t *testing.T) {
 func TestRunSQLInCopiesSelectedCSVColumnAsInClause(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "ids.csv")
-	if err := os.WriteFile(path, []byte("user_id,name\n20317,alpha\n20318,beta\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("user_id,name\n20317,alpha\n20317,duplicate\n20318,beta\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -152,5 +152,30 @@ func TestSQLInPickerMovesAcrossColumnsAndFormats(t *testing.T) {
 	model = updated.(sqlInPickerModel)
 	if !model.accepted {
 		t.Fatal("accepted = false, want true")
+	}
+}
+
+func TestSQLInPickerTogglesUniqueAndOriginalValues(t *testing.T) {
+	source := sqlInSource{
+		columns: []string{"user_id"},
+		rows: [][]string{
+			{"20317"},
+			{"20317"},
+			{"20318"},
+		},
+	}
+
+	model := newSQLInPickerModel(source)
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model = updated.(sqlInPickerModel)
+
+	if got, want := model.result(), "(20317,20318)"; got != want {
+		t.Fatalf("default result = %q, want %q", got, want)
+	}
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	model = updated.(sqlInPickerModel)
+	if got, want := model.result(), "(20317,20317,20318)"; got != want {
+		t.Fatalf("original result = %q, want %q", got, want)
 	}
 }
