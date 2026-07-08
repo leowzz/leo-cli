@@ -1,8 +1,8 @@
 # leo-cli
 
-Chinese is the default documentation: [README.md](README.md).
+[中文](https://github.com/leowzz/leo-cli/blob/main/README.zh.md) | English
 
-`leo-cli` builds a `leo` binary for personal command-line workflows:
+`leo-cli` builds a `leo` binary for personal command-line workflows. It currently covers four practical jobs:
 
 - Index local Git repositories and pick one from an interactive terminal list.
 - Generate a shell helper so `repo` can jump into the selected repository.
@@ -11,9 +11,7 @@ Chinese is the default documentation: [README.md](README.md).
 
 ## Install
 
-Download a binary from [GitHub Releases](https://github.com/leowzz/leo-cli/releases).
-
-Example asset names:
+Download a binary from [GitHub Releases](https://github.com/leowzz/leo-cli/releases). Asset names look like:
 
 ```text
 leo-v0.0.9-darwin-arm64
@@ -34,58 +32,119 @@ Windows:
 ren leo-v0.0.9-windows-amd64.exe leo.exe
 ```
 
+Put the directory containing `leo` or `leo.exe` on your `PATH`.
+
 Or build locally:
 
 ```bash
 make build
 ```
 
-The binary is written to `bin/leo`.
+The binary is written to:
+
+```text
+bin/leo
+```
 
 ## Quick Start
 
-Index repositories:
+Create the repository index:
 
 ```bash
 leo repo reindex
 ```
 
-Open the picker:
+Open the repository picker:
 
 ```bash
 leo repo
 ```
 
-Enable shell jumping:
+Type to filter. Press Enter to print the selected repository path. Press Esc or Ctrl-C to cancel.
+
+Enable the shell jump helper:
 
 ```bash
 eval "$(leo shell init zsh)"
+```
+
+bash:
+
+```bash
 eval "$(leo shell init bash)"
 ```
 
-Then run:
+Add the matching `eval` line to `~/.zshrc` or `~/.bashrc`, then run:
 
 ```bash
 repo
 ```
 
-Build SQL `IN` values:
+`repo` opens the picker and runs `cd` after a repository is selected.
+
+## SQL IN Helper
+
+Read from clipboard:
 
 ```bash
 leo join
+```
+
+Read from file:
+
+```bash
 leo join ids.txt
 leo join ids.csv
+```
+
+In the interactive picker:
+
+- Left/Right: switch csv columns.
+- Up/Down: switch output formats.
+- Enter: copy the current result.
+- Esc: cancel.
+
+Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
+
+## Docker Image Copy
+
+First configure registry aliases:
+
+```yaml
+docker:
+  registries:
+    it: source-registry.example.com
+    t: mirror-registry.example.com
+```
+
+List aliases:
+
+```bash
+leo docker list
 ```
 
 Copy images:
 
 ```bash
-leo docker list
 leo docker copy it/apps/example-service:v1.2.4 t
+leo docker copy it/apps/example-service:v1.2.4 t/library/example-service:latest
+leo docker copy registry.example.com/app:v1 mirror.example.com/app:v1
+```
+
+Print the command without running it:
+
+```bash
 leo docker copy python:3.12 t --dry
 ```
 
-`leo docker copy` requires [skopeo](https://github.com/containers/skopeo). It does not use the local Docker daemon.
+Select a platform:
+
+```bash
+leo docker copy python:3.12-slim t --platform linux/arm64
+leo docker copy python:3.12-slim t --platform linux/arm64/v8
+```
+
+`docker copy` calls [skopeo](https://github.com/containers/skopeo). It does not use the local Docker daemon or `docker context`. The default platform is `linux/amd64`.
 
 ## Configuration
 
@@ -95,7 +154,7 @@ Default config path:
 ~/.config/leo-cli/config.yaml
 ```
 
-Default config:
+If the file does not exist, `leo` creates:
 
 ```yaml
 repo:
@@ -110,11 +169,20 @@ repo:
   roots:
     - ~/work
     - ~/repo
+    - $HOME/src
 docker:
   registries:
     it: source-registry.example.com
     t: mirror-registry.example.com
 ```
+
+Paths support:
+
+- `~` for the current user's home directory.
+- Environment variables such as `$HOME`.
+- Relative paths, which are resolved to absolute paths.
+
+Missing or unreadable repository roots are printed as warnings. `repo reindex` only fails when all configured roots are unusable.
 
 Default data path:
 
@@ -122,27 +190,82 @@ Default data path:
 ~/.local/share/leo-cli/leo-cli.sqlite3
 ```
 
-`XDG_CONFIG_HOME` and `XDG_DATA_HOME` override those defaults when set.
+`XDG_CONFIG_HOME` and `XDG_DATA_HOME` override the default config and data locations when set.
+
+The repository index uses SQLite with WAL. Rows are upserted by absolute repository path. Stale repositories that no longer exist on disk are not removed automatically yet.
 
 ## Commands
 
 | Command | Description |
 | --- | --- |
 | `leo --version` / `leo version` | Print version and commit metadata |
-| `leo repo reindex` | Scan configured repository roots |
-| `leo repo` | Open the repository picker |
+| `leo repo reindex` | Scan configured repository roots and update the index |
+| `leo repo` | Open the interactive repository picker and print the selected path |
 | `leo shell init zsh` | Print zsh integration |
 | `leo shell init bash` | Print bash integration |
-| `leo join [FILE]` | Build SQL `IN` values |
-| `leo docker list` | List registry aliases |
-| `leo docker copy SOURCE DESTINATION` | Copy an image with `skopeo` |
+| `leo join [FILE]` | Build SQL `IN` values from clipboard, txt, or csv |
+| `leo docker list` | Print Docker registry aliases |
+| `leo docker copy SOURCE DESTINATION` | Copy an image with `skopeo copy` |
 
 ## Development
 
+Run from source:
+
 ```bash
 make dev
+```
+
+Run tests:
+
+```bash
 make test
+```
+
+Build:
+
+```bash
 make build
+```
+
+Version metadata comes from `.env`:
+
+```text
+version=v0.0.9
+```
+
+Create a tag and bump the patch version:
+
+```bash
 make release
+```
+
+Use an explicit version:
+
+```bash
+make release V=v0.1.0
+```
+
+Build cross-platform binaries, push the tag, and publish a GitHub release with GitHub CLI:
+
+```bash
 make release-github
+make release-github V=v0.1.0
+```
+
+This requires an installed and authenticated [GitHub CLI](https://cli.github.com/).
+
+## Project Layout
+
+```text
+cmd/                 Cobra command wiring
+internal/config/     YAML config, default paths, path expansion
+internal/dockercopy/ Docker image reference and registry alias resolution
+internal/refresh/    Initial index and background metadata refresh
+internal/repoindex/  Git repository scanning and metadata extraction
+internal/repoui/     Bubble Tea repository picker
+internal/shellinit/  Shell integration script generation
+internal/store/      SQLite storage and migrations
+internal/termio/     Terminal input/output compatibility layer
+internal/version/    Build-time version metadata
+scripts/             Release helper scripts
 ```
