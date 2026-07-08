@@ -1,113 +1,160 @@
 # leo-cli
 
-Personal command-line tools, starting with a local repository browser.
+中文 | [English](README.en.md)
 
-`leo-cli` builds a `leo` binary. The current CLI can index Git repositories
-under configured local roots, open an interactive terminal picker, and print the
-selected repository path. With the shell integration enabled, the selected path
-is used to `cd` directly into the repository.
+`leo-cli` 是一组个人命令行工具，构建产物是 `leo`。当前主要做四件事：
 
-## Features
+- 扫描本地 Git 仓库，并用交互式终端列表快速选择仓库。
+- 生成 shell 函数，让 `repo` 选择仓库后直接 `cd` 进去。
+- 从剪贴板、txt 或 csv 构造 SQL `IN` 列表，并复制结果。
+- 用 registry alias 简化 `skopeo copy` 的镜像搬运命令。
 
-- Recursively scans configured repository roots.
-- Detects normal Git repositories and worktree-style `.git` files.
-- Stores repository metadata in a local SQLite database.
-- Sorts repositories by recent Git activity.
-- Shows an interactive fuzzy-filtered terminal list.
-- Displays branch, last commit time, and full path in the picker.
-- Provides a shell helper so `repo` can jump to the selected repository.
-- Copies container images between registries with short aliases via `leo docker copy`.
-- Builds SQL `IN` value lists from txt or csv files and copies the result.
+## 安装
 
-## Requirements
+从 [GitHub Releases](https://github.com/leowzz/leo-cli/releases) 下载对应平台的二进制文件。文件名形如：
 
-- Go 1.25.6 or newer, matching `go.mod`.
-- Git, for fallback commit metadata lookup during indexing.
-- Skopeo, for `leo docker copy`.
-- A terminal environment for the interactive picker.
-
-## Install
-
-Download a prebuilt binary from [GitHub Releases](https://github.com/leowzz/leo-cli/releases).
-Assets include the release tag and platform, for example `leo-v0.1.0-darwin-arm64`
-or `leo-v0.1.0-windows-amd64.exe`.
-Make the file executable and place it on your `PATH`:
-
-```bash
-chmod +x leo-v0.1.0-darwin-arm64
-mv leo-v0.1.0-darwin-arm64 ~/bin/leo
+```text
+leo-v0.0.9-darwin-arm64
+leo-v0.0.9-linux-amd64
+leo-v0.0.9-windows-amd64.exe
 ```
 
-Or build locally:
+macOS / Linux:
+
+```bash
+chmod +x leo-v0.0.9-darwin-arm64
+mv leo-v0.0.9-darwin-arm64 ~/bin/leo
+```
+
+Windows:
+
+```powershell
+ren leo-v0.0.9-windows-amd64.exe leo.exe
+```
+
+把 `leo` 或 `leo.exe` 所在目录加入 `PATH` 后即可使用。
+
+也可以本地构建：
 
 ```bash
 make build
 ```
 
-The binary is written to:
+构建产物在：
 
 ```text
 bin/leo
 ```
 
-To install it somewhere on your `PATH`, copy or symlink `bin/leo` into a
-directory such as `~/bin` or `/usr/local/bin`.
+## 快速开始
 
-For development, you can also run the CLI directly:
-
-```bash
-go run .
-```
-
-## Quick Start
-
-Create or update the repository index:
+先建立仓库索引：
 
 ```bash
 leo repo reindex
 ```
 
-Open the interactive repository picker:
+打开仓库选择器：
 
 ```bash
 leo repo
 ```
 
-Type to filter. Press Enter to print the selected repository path. Press Escape
-or Ctrl-C to exit without selecting anything.
+输入关键字过滤，按 Enter 输出选中仓库路径，按 Esc 或 Ctrl-C 取消。
 
-Enable the shell integration so `repo` changes into the selected directory:
+启用 shell 跳转函数：
 
 ```bash
 eval "$(leo shell init zsh)"
 ```
 
-For bash:
+bash:
 
 ```bash
 eval "$(leo shell init bash)"
 ```
 
-To make this permanent, add the matching `eval` line to your shell startup file,
-for example `~/.zshrc` or `~/.bashrc`.
-
-After that, run:
+把对应 `eval` 加到 `~/.zshrc` 或 `~/.bashrc` 后，就可以运行：
 
 ```bash
 repo
 ```
 
-The shell function opens the picker and runs `cd` with the selected path.
+`repo` 会打开仓库选择器，并在选中后执行 `cd`。
 
-## Configuration
+## SQL IN 助手
 
-Config is stored at:
+从剪贴板读取：
+
+```bash
+leo join
+```
+
+从文件读取：
+
+```bash
+leo join ids.txt
+leo join ids.csv
+```
+
+交互界面里：
+
+- 左/右：切换 csv 字段。
+- 上/下：切换输出格式。
+- Enter：复制当前结果。
+- Esc：取消。
+
+支持的输出包括逗号列表、括号列表、`field in (...)` 和带引号列表。
+
+## Docker 镜像复制
+
+先在配置里写 registry alias：
+
+```yaml
+docker:
+  registries:
+    it: source-registry.example.com
+    t: mirror-registry.example.com
+```
+
+查看 alias：
+
+```bash
+leo docker list
+```
+
+复制镜像：
+
+```bash
+leo docker copy it/apps/example-service:v1.2.4 t
+leo docker copy it/apps/example-service:v1.2.4 t/library/example-service:latest
+leo docker copy registry.example.com/app:v1 mirror.example.com/app:v1
+```
+
+只打印将要执行的命令：
+
+```bash
+leo docker copy python:3.12 t --dry
+```
+
+指定平台：
+
+```bash
+leo docker copy python:3.12-slim t --platform linux/arm64
+leo docker copy python:3.12-slim t --platform linux/arm64/v8
+```
+
+`docker copy` 调用的是 [skopeo](https://github.com/containers/skopeo)，不依赖本机 Docker daemon 或 `docker context`。默认平台是 `linux/amd64`。
+
+## 配置
+
+默认配置文件：
 
 ```text
 ~/.config/leo-cli/config.yaml
 ```
 
-If the file does not exist, `leo` creates this default:
+如果文件不存在，`leo` 会创建：
 
 ```yaml
 repo:
@@ -115,17 +162,7 @@ repo:
     - ~/work
 ```
 
-`repo.roots` is the list of directories scanned by `leo repo reindex`.
-`docker.registries` maps short aliases to Docker registry domains for
-`leo docker copy` and `leo docker list`.
-
-Paths support:
-
-- `~` for the current user's home directory.
-- Environment variables supported by Go's `os.ExpandEnv`, such as `$HOME`.
-- Relative paths, which are converted to absolute paths.
-
-Example:
+示例：
 
 ```yaml
 repo:
@@ -139,206 +176,96 @@ docker:
     t: mirror-registry.example.com
 ```
 
-Missing or unreadable roots are reported as warnings. Reindexing only fails when
-all configured roots are unusable.
+路径支持：
 
-## Data
+- `~`，表示当前用户 home。
+- 环境变量，例如 `$HOME`。
+- 相对路径，最终会转成绝对路径。
 
-The repository index is stored at:
+缺失或无法读取的仓库根目录会以 warning 打印。只有所有根目录都不可用时，`repo reindex` 才会失败。
+
+默认数据文件：
 
 ```text
 ~/.local/share/leo-cli/leo-cli.sqlite3
 ```
 
-If `XDG_CONFIG_HOME` or `XDG_DATA_HOME` is set, `leo` uses those locations
-instead of `~/.config` and `~/.local/share`.
+如果设置了 `XDG_CONFIG_HOME` 或 `XDG_DATA_HOME`，会优先使用对应目录。
 
-The database uses SQLite with WAL mode. Repository rows are keyed by absolute
-path and include:
+仓库索引使用 SQLite + WAL。记录按仓库绝对路径 upsert，目前不会自动删除磁盘上已经不存在的旧仓库记录。
 
-- repository path
-- display name
-- current branch
-- last commit time
-- last Git activity time
-- last indexed time
+## 命令速查
 
-Reindexing upserts discovered repositories. It does not currently remove stale
-repositories that no longer exist on disk.
+| 命令 | 作用 |
+| --- | --- |
+| `leo --version` / `leo version` | 打印版本和 commit 信息 |
+| `leo repo reindex` | 扫描配置的仓库根目录并更新索引 |
+| `leo repo` | 打开交互式仓库选择器，选中后输出绝对路径 |
+| `leo shell init zsh` | 打印 zsh 集成脚本 |
+| `leo shell init bash` | 打印 bash 集成脚本 |
+| `leo join [FILE]` | 从剪贴板、txt 或 csv 构造 SQL `IN` 值 |
+| `leo docker list` | 打印 Docker registry alias |
+| `leo docker copy SOURCE DESTINATION` | 用 `skopeo copy` 复制镜像 |
 
-## Commands
+## 开发
 
-```bash
-leo --version
-leo version
-```
-
-Print version and commit metadata.
-
-```bash
-leo repo reindex
-```
-
-Scan configured roots and update the local repository index.
-
-```bash
-leo repo
-```
-
-Open the interactive repository picker. If a repository is selected, print its
-absolute path to stdout.
-
-```bash
-leo shell init zsh
-leo shell init bash
-```
-
-Print shell integration code for the requested shell.
-
-```bash
-leo join ids.txt
-leo join ids.csv
-```
-
-Open an interactive picker for building SQL `IN` values. Use Left/Right to
-switch CSV columns, Up/Down to switch output format, Enter to copy the preview
-to the clipboard, and Escape to cancel.
-
-```bash
-leo docker list
-```
-
-Print configured Docker registry aliases.
-
-`docker copy` resolves registry aliases from config, then invokes `skopeo copy`.
-Skopeo talks to registries directly; it does not use the local Docker daemon or
-`docker context`.
-
-#### Source and destination formats
-
-Source is resolved in two steps:
-
-1. If the first path segment matches a configured alias, expand it as
-   `ALIAS/REPOSITORY[:TAG]`.
-2. Otherwise treat the value as a full image reference (no alias error).
-
-When the destination is only a registry alias or domain, the command reuses the
-source repository path and tag. When the destination includes `/REPOSITORY[:TAG]`,
-that explicit target is used instead.
-
-Examples:
-
-```bash
-# Alias source, reuse repository and tag on destination alias
-leo docker copy it/apps/example-service:v1.2.4 t
-
-# Alias source, explicit destination repository
-leo docker copy it/apps/example-service:v1.2.4 t/library/example-service:latest
-
-# Full registry source and destination (no aliases required)
-leo docker copy registry.example.com/app:v1 mirror.example.com/app:v1
-
-# Single-segment Docker Hub image; source becomes docker.io/library/python:3.12
-leo docker copy python:3.12 t
-
-# Full source reference preserved; destination reuses example-user/python:3.12
-leo docker copy registry.example.com/example-user/python:3.12 t
-```
-
-#### Flags
-
-```bash
-leo docker copy --dry it/apps/example-service:v1.2.4 t
-```
-
-Print the rendered `skopeo copy` command without running it.
-
-```bash
-leo docker copy python:3.12-slim tx/example-user/python:3.12-slim
-```
-
-Copy a single platform from multi-arch images. Default is `linux/amd64`. On
-macOS, skopeo otherwise selects `darwin/<arch>` from manifest lists and often
-fails for official Linux-only images.
-
-```bash
-leo docker copy python:3.12-slim tx/example-user/python:3.12-slim --platform linux/arm64
-leo docker copy python:3.12-slim tx/example-user/python:3.12-slim --platform linux/arm64/v8
-```
-
-`--platform` accepts `OS/ARCH` or `OS/ARCH/VARIANT` and maps to skopeo
-`--override-os`, `--override-arch`, and optionally `--override-variant`.
-
-Dry-run example:
-
-```bash
-leo docker copy python:3.12 t --dry
-# skopeo copy --override-os linux --override-arch amd64 docker://docker.io/library/python:3.12 docker://...
-```
-
-## Development
-
-Run the CLI from source:
+从源码运行：
 
 ```bash
 make dev
 ```
 
-Run tests:
+测试：
 
 ```bash
 make test
 ```
 
-Build:
+构建：
 
 ```bash
 make build
 ```
 
-The build embeds version metadata from `.env`:
+版本号来自 `.env`：
 
 ```text
-version=v0.0.0
+version=v0.0.9
 ```
 
-The command name defaults to `leo` and is embedded during `make build`.
-
-Create a release tag and bump the patch version from `.env`:
+打 tag 并递增 patch 版本：
 
 ```bash
 make release
 ```
 
-Set an explicit release version:
+指定版本：
 
 ```bash
 make release V=v0.1.0
 ```
 
-Build cross-platform binaries, push the tag, and publish a GitHub release with
-`gh` (requires the GitHub CLI and authenticated `gh auth`):
+构建多平台二进制、推送 tag，并用 GitHub CLI 发布 release：
 
 ```bash
 make release-github
 make release-github V=v0.1.0
 ```
 
-This uploads raw binaries named `leo-<tag>-<os>-<arch>` for darwin/linux/windows
-on amd64 and arm64. Windows assets use the `.exe` suffix. See
-`scripts/release-github.sh` for details.
+需要已安装并登录 [GitHub CLI](https://cli.github.com/)。
 
-## Project Layout
+## 项目结构
 
 ```text
-cmd/                 Cobra command wiring
-internal/config/     YAML config, default paths, path expansion
-internal/dockercopy/ Docker image reference and registry alias resolution
-internal/refresh/    Initial and background metadata refresh behavior
-internal/repoindex/  Git repository scanning and metadata extraction
-internal/repoui/     Bubble Tea repository picker
-internal/shellinit/  Shell integration script generation
-internal/store/      SQLite storage and migrations
-internal/version/    Build-time version metadata
-scripts/             Release helpers
+cmd/                 Cobra 命令入口
+internal/config/     YAML 配置、默认路径、路径展开
+internal/dockercopy/ Docker 镜像引用和 registry alias 解析
+internal/refresh/    初始索引和后台元数据刷新
+internal/repoindex/  Git 仓库扫描和元数据提取
+internal/repoui/     Bubble Tea 仓库选择器
+internal/shellinit/  shell 集成脚本生成
+internal/store/      SQLite 存储和迁移
+internal/termio/     终端输入输出兼容层
+internal/version/    构建期版本信息
+scripts/             release 辅助脚本
 ```
