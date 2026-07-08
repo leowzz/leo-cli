@@ -107,6 +107,26 @@ leo join ids.csv
 
 默认按首次出现顺序去重。支持的输出包括逗号列表、括号列表、`field in (...)` 和带引号列表。
 
+## 时间转换
+
+支持 Unix 秒、Unix 毫秒和常见日期时间字符串：
+
+```bash
+leo time
+leo time 1783512043
+leo time 1783512043000
+leo time "(2026-07-08 20:00:43)"
+```
+
+不传值时，`leo time` 使用当前时间。
+
+没有显式时区的日期时间字符串默认按 UTC+8 解析。用 `--to` 指定输出时区：
+
+```bash
+leo time 1783512043 --to +9
+leo time "2026-07-08 20:00:43" --to +9
+```
+
 ## Docker 镜像复制
 
 先在配置里写 registry alias：
@@ -205,6 +225,7 @@ docker:
 | `leo shell init zsh` | 打印 zsh 集成脚本 |
 | `leo shell init bash` | 打印 bash 集成脚本 |
 | `leo join [FILE]` | 从剪贴板、txt 或 csv 构造 SQL `IN` 值 |
+| `leo time [VALUE]` | 转换当前时间、时间戳和常见时间字符串 |
 | `leo docker list` | 打印 Docker registry alias |
 | `leo docker copy SOURCE DESTINATION` | 用 `skopeo copy` 复制镜像 |
 

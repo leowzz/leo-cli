@@ -107,6 +107,26 @@ In the interactive picker:
 
 Values are unique by default, preserving first-seen order. Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
 
+## Time Converter
+
+Convert Unix seconds, Unix milliseconds, and common date-time strings:
+
+```bash
+leo time
+leo time 1783512043
+leo time 1783512043000
+leo time "(2026-07-08 20:00:43)"
+```
+
+Without a value, `leo time` uses the current time.
+
+Date-time strings without an explicit timezone are treated as UTC+8. Use `--to` to choose the output timezone:
+
+```bash
+leo time 1783512043 --to +9
+leo time "2026-07-08 20:00:43" --to +9
+```
+
 ## Docker Image Copy
 
 First configure registry aliases:
@@ -205,6 +225,7 @@ The repository index uses SQLite with WAL. Rows are upserted by absolute reposit
 | `leo shell init zsh` | Print zsh integration |
 | `leo shell init bash` | Print bash integration |
 | `leo join [FILE]` | Build SQL `IN` values from clipboard, txt, or csv |
+| `leo time [VALUE]` | Convert current time, timestamps, and common time strings |
 | `leo docker list` | Print Docker registry aliases |
 | `leo docker copy SOURCE DESTINATION` | Copy an image with `skopeo copy` |
 
