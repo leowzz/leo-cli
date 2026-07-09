@@ -125,9 +125,10 @@ Date-time strings without an explicit timezone are treated as UTC+8. Use `--to` 
 ```bash
 leo time 1783512043 --to +9
 leo time "2026-07-08 20:00:43" --to +9
+leo time 1783512043 --to Asia/Tokyo
 ```
 
-Configured `time.zones` are printed as extra common timezone rows.
+Configured `time.zones` are printed as extra common timezone rows. Values can be UTC offsets or IANA timezone names.
 
 ## Docker Image Copy
 
@@ -187,6 +188,7 @@ time:
   zones:
     - +9
     - +0
+    - America/Los_Angeles
 ```
 
 Example:
@@ -205,9 +207,10 @@ time:
   zones:
     - +9
     - +0
+    - America/Los_Angeles
 ```
 
-`time.zones` controls the extra common timezone rows printed by `leo time`.
+`time.zones` controls the extra common timezone rows printed by `leo time`. It accepts UTC offsets like `+9` and IANA names like `America/Los_Angeles`.
 
 Paths support:
 

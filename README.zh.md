@@ -125,9 +125,10 @@ leo time "(2026-07-08 20:00:43)"
 ```bash
 leo time 1783512043 --to +9
 leo time "2026-07-08 20:00:43" --to +9
+leo time 1783512043 --to Asia/Tokyo
 ```
 
-配置里的 `time.zones` 会作为额外常用时区行打印。
+配置里的 `time.zones` 会作为额外常用时区行打印，支持 UTC offset 和 IANA 时区名。
 
 ## Docker 镜像复制
 
@@ -187,6 +188,7 @@ time:
   zones:
     - +9
     - +0
+    - America/Los_Angeles
 ```
 
 示例：
@@ -205,9 +207,10 @@ time:
   zones:
     - +9
     - +0
+    - America/Los_Angeles
 ```
 
-`time.zones` 控制 `leo time` 额外打印的常用时区。
+`time.zones` 控制 `leo time` 额外打印的常用时区。支持 `+9` 这类 UTC offset，也支持 `America/Los_Angeles` 这类 IANA 时区名。
 
 路径支持：
 

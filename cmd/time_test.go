@@ -51,6 +51,19 @@ func TestRunTimeConvertsTimestampToTargetZone(t *testing.T) {
 	}
 }
 
+func TestRunTimeConvertsTimestampToIANATargetZone(t *testing.T) {
+	var stdout bytes.Buffer
+	err := runTime([]string{"1783512043"}, "Asia/Tokyo", config.Config{}, &stdout, stdtime.Now)
+	if err != nil {
+		t.Fatalf("runTime() error = %v", err)
+	}
+
+	want := "时间: 2026-07-08 21:00:43 Asia/Tokyo\n时间戳: 1783512043\n毫秒: 1783512043000\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
 func TestRunTimeUsesCurrentTimeWhenValueIsOmitted(t *testing.T) {
 	var stdout bytes.Buffer
 	now := stdtime.Date(2026, 7, 8, 20, 0, 43, 123000000, stdtime.UTC)
@@ -78,6 +91,23 @@ func TestRunTimePrintsConfiguredCommonZones(t *testing.T) {
 	}
 
 	want := "时间: 2026-07-09 04:00:43 UTC+8\n时间戳: 1783540843\n毫秒: 1783540843000\n常用时区:\n  UTC+9: 2026-07-09 05:00:43\n  UTC+0: 2026-07-08 20:00:43\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestRunTimePrintsConfiguredIANAZones(t *testing.T) {
+	var stdout bytes.Buffer
+	cfg := config.Config{Time: config.TimeConfig{Zones: []string{"Asia/Tokyo", "America/Los_Angeles", "+8"}}}
+
+	err := runTime(nil, "+8", cfg, &stdout, func() stdtime.Time {
+		return stdtime.Date(2026, 7, 8, 20, 0, 43, 0, stdtime.UTC)
+	})
+	if err != nil {
+		t.Fatalf("runTime() error = %v", err)
+	}
+
+	want := "时间: 2026-07-09 04:00:43 UTC+8\n时间戳: 1783540843\n毫秒: 1783540843000\n常用时区:\n  Asia/Tokyo: 2026-07-09 05:00:43\n  America/Los_Angeles: 2026-07-08 13:00:43\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}

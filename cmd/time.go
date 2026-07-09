@@ -27,12 +27,12 @@ var timeCmd = &cobra.Command{
 }
 
 func init() {
-	timeCmd.Flags().StringVar(&timeToZone, "to", "+8", "Output timezone offset, for example +8, +9, or -5")
+	timeCmd.Flags().StringVar(&timeToZone, "to", "+8", "Output timezone, for example +8, +9, or Asia/Tokyo")
 	rootCmd.AddCommand(timeCmd)
 }
 
 func runTime(args []string, toZone string, cfg config.Config, stdout io.Writer, now func() stdtime.Time) error {
-	loc, err := parseZoneOffset(toZone)
+	loc, label, err := parseTimeZone(toZone)
 	if err != nil {
 		return err
 	}
@@ -46,23 +46,21 @@ func runTime(args []string, toZone string, cfg config.Config, stdout io.Writer, 
 	}
 
 	output := parsed.In(loc)
-	zoneName, _ := output.Zone()
-	if _, err := fmt.Fprintf(stdout, "时间: %s %s\n时间戳: %d\n毫秒: %d\n", output.Format("2006-01-02 15:04:05"), zoneName, output.Unix(), output.UnixMilli()); err != nil {
+	if _, err := fmt.Fprintf(stdout, "时间: %s %s\n时间戳: %d\n毫秒: %d\n", output.Format("2006-01-02 15:04:05"), label, output.Unix(), output.UnixMilli()); err != nil {
 		return err
 	}
-	return printConfiguredTimeZones(stdout, parsed, zoneName, cfg.Time.Zones)
+	return printConfiguredTimeZones(stdout, parsed, label, cfg.Time.Zones)
 }
 
 func printConfiguredTimeZones(stdout io.Writer, value stdtime.Time, primaryZone string, zones []string) error {
 	wroteHeader := false
 	for _, zone := range zones {
-		loc, err := parseZoneOffset(zone)
+		loc, label, err := parseTimeZone(zone)
 		if err != nil {
 			return fmt.Errorf("invalid configured time zone %q: %w", zone, err)
 		}
 		converted := value.In(loc)
-		zoneName, _ := converted.Zone()
-		if zoneName == primaryZone {
+		if label == primaryZone {
 			continue
 		}
 		if !wroteHeader {
@@ -71,7 +69,7 @@ func printConfiguredTimeZones(stdout io.Writer, value stdtime.Time, primaryZone 
 			}
 			wroteHeader = true
 		}
-		if _, err := fmt.Fprintf(stdout, "  %s: %s\n", zoneName, converted.Format("2006-01-02 15:04:05")); err != nil {
+		if _, err := fmt.Fprintf(stdout, "  %s: %s\n", label, converted.Format("2006-01-02 15:04:05")); err != nil {
 			return err
 		}
 	}
@@ -125,7 +123,19 @@ func parseTimeValue(value string, defaultLoc *stdtime.Location) (stdtime.Time, e
 	return stdtime.Time{}, fmt.Errorf("unsupported time value %q", value)
 }
 
-func parseZoneOffset(value string) (*stdtime.Location, error) {
+func parseTimeZone(value string) (*stdtime.Location, string, error) {
+	if loc, label, ok, err := parseZoneOffset(value); ok || err != nil {
+		return loc, label, err
+	}
+	cleaned := strings.TrimSpace(value)
+	loc, err := stdtime.LoadLocation(cleaned)
+	if err != nil {
+		return nil, "", err
+	}
+	return loc, cleaned, nil
+}
+
+func parseZoneOffset(value string) (*stdtime.Location, string, bool, error) {
 	cleaned := strings.TrimSpace(value)
 	if cleaned == "" {
 		cleaned = "+8"
@@ -136,7 +146,7 @@ func parseZoneOffset(value string) (*stdtime.Location, error) {
 		cleaned = "+0"
 	}
 	if cleaned[0] != '+' && cleaned[0] != '-' {
-		return nil, fmt.Errorf("timezone must start with + or -, got %q", value)
+		return nil, "", false, nil
 	}
 
 	sign := 1
@@ -145,23 +155,24 @@ func parseZoneOffset(value string) (*stdtime.Location, error) {
 	}
 	parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(cleaned, "+"), "-"), ":")
 	if len(parts) > 2 || parts[0] == "" {
-		return nil, fmt.Errorf("timezone must be like +8 or +09:00, got %q", value)
+		return nil, "", true, fmt.Errorf("timezone must be like +8, +09:00, or Asia/Tokyo, got %q", value)
 	}
 	hours, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("timezone must be like +8 or +09:00, got %q", value)
+		return nil, "", true, fmt.Errorf("timezone must be like +8, +09:00, or Asia/Tokyo, got %q", value)
 	}
 	minutes := 0
 	if len(parts) == 2 {
 		minutes, err = strconv.Atoi(parts[1])
 		if err != nil {
-			return nil, fmt.Errorf("timezone must be like +8 or +09:00, got %q", value)
+			return nil, "", true, fmt.Errorf("timezone must be like +8, +09:00, or Asia/Tokyo, got %q", value)
 		}
 	}
 	if hours > 14 || minutes >= 60 {
-		return nil, fmt.Errorf("invalid timezone offset %q", value)
+		return nil, "", true, fmt.Errorf("invalid timezone offset %q", value)
 	}
-	return fixedZoneMinutes(sign * (hours*60 + minutes)), nil
+	loc := fixedZoneMinutes(sign * (hours*60 + minutes))
+	return loc, loc.String(), true, nil
 }
 
 func fixedZone(hours int) *stdtime.Location {
