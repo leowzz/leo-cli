@@ -44,7 +44,8 @@ var joinCmd = &cobra.Command{
 	Short: "Build a SQL IN value list from file or clipboard",
 	Args:  cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runSQLInArgs(args, cmd.OutOrStdout(), clipboard.ReadAll, clipboard.WriteAll, runSQLInPicker)
+		stdin := cmd.InOrStdin()
+		return runSQLInArgs(args, stdin, hasPipedStdin(stdin), cmd.OutOrStdout(), clipboard.ReadAll, clipboard.WriteAll, runSQLInPicker)
 	},
 }
 
@@ -52,8 +53,15 @@ func init() {
 	rootCmd.AddCommand(joinCmd)
 }
 
-func runSQLInArgs(args []string, stdout io.Writer, readClipboard func() (string, error), writeClipboard func(string) error, pick sqlInPicker) error {
+func runSQLInArgs(args []string, stdin io.Reader, stdinHasData bool, stdout io.Writer, readClipboard func() (string, error), writeClipboard func(string) error, pick sqlInPicker) error {
 	if len(args) == 0 {
+		if stdinHasData {
+			data, err := io.ReadAll(stdin)
+			if err != nil {
+				return err
+			}
+			return runSQLInSource(sqlInSourceFromText(string(data)), stdout, writeClipboard, pick)
+		}
 		text, err := readClipboard()
 		if err != nil {
 			return err
@@ -61,6 +69,15 @@ func runSQLInArgs(args []string, stdout io.Writer, readClipboard func() (string,
 		return runSQLInSource(sqlInSourceFromText(text), stdout, writeClipboard, pick)
 	}
 	return runSQLIn(args[0], stdout, writeClipboard, pick)
+}
+
+func hasPipedStdin(stdin io.Reader) bool {
+	file, ok := stdin.(*os.File)
+	if !ok {
+		return false
+	}
+	stat, err := file.Stat()
+	return err == nil && stat.Mode()&os.ModeCharDevice == 0
 }
 
 func runSQLIn(path string, stdout io.Writer, writeClipboard func(string) error, pick sqlInPicker) error {

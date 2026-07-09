@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -89,7 +91,7 @@ func TestRunSQLInCopiesSelectedCSVColumnAsInClause(t *testing.T) {
 func TestRunSQLInReadsClipboardWhenNoFile(t *testing.T) {
 	var stdout bytes.Buffer
 	var copied string
-	err := runSQLInArgs(nil, &stdout, func() (string, error) {
+	err := runSQLInArgs(nil, strings.NewReader(""), false, &stdout, func() (string, error) {
 		return "20317\n20318,20319", nil
 	}, func(value string) error {
 		copied = value
@@ -109,6 +111,29 @@ func TestRunSQLInReadsClipboardWhenNoFile(t *testing.T) {
 	}
 	if want := "数量: 3\n示例: (20317,20318,20319)\n已复制到剪贴板\n"; stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestRunSQLInReadsPipedStdinWhenNoFile(t *testing.T) {
+	var stdout bytes.Buffer
+	var copied string
+	err := runSQLInArgs(nil, strings.NewReader("20317\n20318\n"), true, &stdout, func() (string, error) {
+		return "", fmt.Errorf("clipboard should not be read")
+	}, func(value string) error {
+		copied = value
+		return nil
+	}, func(source sqlInSource) (sqlInSelection, bool, error) {
+		if got, want := source.values(0), []string{"20317", "20318"}; !slices.Equal(got, want) {
+			t.Fatalf("stdin values = %#v, want %#v", got, want)
+		}
+		return sqlInSelection{column: 0, format: sqlInFormatParen}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("runSQLInArgs() error = %v", err)
+	}
+
+	if want := "(20317,20318)"; copied != want {
+		t.Fatalf("copied = %q, want %q", copied, want)
 	}
 }
 

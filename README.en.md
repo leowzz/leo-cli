@@ -90,6 +90,12 @@ Read from clipboard:
 leo join
 ```
 
+Read from stdin:
+
+```bash
+seq 1 10 | leo join
+```
+
 Read from file:
 
 ```bash
@@ -105,7 +111,7 @@ In the interactive picker:
 - Enter: copy the current result.
 - Esc: cancel.
 
-Values are unique by default, preserving first-seen order. Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
+When no file is provided, piped stdin is used before clipboard. Values are unique by default, preserving first-seen order. Output formats include comma lists, parenthesized lists, `field in (...)`, and quoted lists.
 
 ## Time Converter
 
