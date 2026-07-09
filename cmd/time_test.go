@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	stdtime "time"
+
+	"github.com/leo/leo-cli/internal/config"
 )
 
 func TestTimeCommandUse(t *testing.T) {
@@ -38,7 +40,7 @@ func TestParseTimeValueUnixMilliseconds(t *testing.T) {
 
 func TestRunTimeConvertsTimestampToTargetZone(t *testing.T) {
 	var stdout bytes.Buffer
-	err := runTime([]string{"1783512043"}, "+9", &stdout, stdtime.Now)
+	err := runTime([]string{"1783512043"}, "+9", config.Config{}, &stdout, stdtime.Now)
 	if err != nil {
 		t.Fatalf("runTime() error = %v", err)
 	}
@@ -53,12 +55,29 @@ func TestRunTimeUsesCurrentTimeWhenValueIsOmitted(t *testing.T) {
 	var stdout bytes.Buffer
 	now := stdtime.Date(2026, 7, 8, 20, 0, 43, 123000000, stdtime.UTC)
 
-	err := runTime(nil, "+8", &stdout, func() stdtime.Time { return now })
+	err := runTime(nil, "+8", config.Config{}, &stdout, func() stdtime.Time { return now })
 	if err != nil {
 		t.Fatalf("runTime() error = %v", err)
 	}
 
 	want := "时间: 2026-07-09 04:00:43 UTC+8\n时间戳: 1783540843\n毫秒: 1783540843123\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestRunTimePrintsConfiguredCommonZones(t *testing.T) {
+	var stdout bytes.Buffer
+	cfg := config.Config{Time: config.TimeConfig{Zones: []string{"+9", "+0", "+8"}}}
+
+	err := runTime(nil, "+8", cfg, &stdout, func() stdtime.Time {
+		return stdtime.Date(2026, 7, 8, 20, 0, 43, 0, stdtime.UTC)
+	})
+	if err != nil {
+		t.Fatalf("runTime() error = %v", err)
+	}
+
+	want := "时间: 2026-07-09 04:00:43 UTC+8\n时间戳: 1783540843\n毫秒: 1783540843000\n常用时区:\n  UTC+9: 2026-07-09 05:00:43\n  UTC+0: 2026-07-08 20:00:43\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}

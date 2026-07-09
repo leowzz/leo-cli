@@ -127,6 +127,8 @@ leo time 1783512043 --to +9
 leo time "2026-07-08 20:00:43" --to +9
 ```
 
+配置里的 `time.zones` 会作为额外常用时区行打印。
+
 ## Docker 镜像复制
 
 先在配置里写 registry alias：
@@ -181,6 +183,10 @@ leo docker copy python:3.12-slim t --platform linux/arm64/v8
 repo:
   roots:
     - ~/work
+time:
+  zones:
+    - +9
+    - +0
 ```
 
 示例：
@@ -195,7 +201,13 @@ docker:
   registries:
     it: source-registry.example.com
     t: mirror-registry.example.com
+time:
+  zones:
+    - +9
+    - +0
 ```
+
+`time.zones` 控制 `leo time` 额外打印的常用时区。
 
 路径支持：
 

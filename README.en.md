@@ -127,6 +127,8 @@ leo time 1783512043 --to +9
 leo time "2026-07-08 20:00:43" --to +9
 ```
 
+Configured `time.zones` are printed as extra common timezone rows.
+
 ## Docker Image Copy
 
 First configure registry aliases:
@@ -181,6 +183,10 @@ If the file does not exist, `leo` creates:
 repo:
   roots:
     - ~/work
+time:
+  zones:
+    - +9
+    - +0
 ```
 
 Example:
@@ -195,7 +201,13 @@ docker:
   registries:
     it: source-registry.example.com
     t: mirror-registry.example.com
+time:
+  zones:
+    - +9
+    - +0
 ```
+
+`time.zones` controls the extra common timezone rows printed by `leo time`.
 
 Paths support:
 

@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Repo   RepoConfig   `yaml:"repo"`
 	Docker DockerConfig `yaml:"docker"`
+	Time   TimeConfig   `yaml:"time"`
 }
 
 type RepoConfig struct {
@@ -20,6 +21,10 @@ type RepoConfig struct {
 
 type DockerConfig struct {
 	Registries map[string]string `yaml:"registries"`
+}
+
+type TimeConfig struct {
+	Zones []string `yaml:"zones"`
 }
 
 func DefaultPath() (string, error) {
@@ -45,7 +50,7 @@ func Ensure(path string) error {
 		return err
 	}
 
-	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n"), 0o644)
+	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\ntime:\n  zones:\n    - +9\n    - +0\n"), 0o644)
 }
 
 func Load(path string) (Config, error) {

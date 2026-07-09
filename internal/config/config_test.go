@@ -23,6 +23,10 @@ func TestEnsureCreatesDefaultConfig(t *testing.T) {
 	if !reflect.DeepEqual(cfg.Repo.Roots, want) {
 		t.Fatalf("roots = %#v, want %#v", cfg.Repo.Roots, want)
 	}
+	wantZones := []string{"+9", "+0"}
+	if !reflect.DeepEqual(cfg.Time.Zones, wantZones) {
+		t.Fatalf("time zones = %#v, want %#v", cfg.Time.Zones, wantZones)
+	}
 }
 
 func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
@@ -47,7 +51,7 @@ func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
 
 func TestLoadYAML(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\ntime:\n  zones:\n    - +9\n    - +0\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -67,6 +71,11 @@ func TestLoadYAML(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg.Docker.Registries, wantRegistries) {
 		t.Fatalf("docker registries = %#v, want %#v", cfg.Docker.Registries, wantRegistries)
+	}
+
+	wantZones := []string{"+9", "+0"}
+	if !reflect.DeepEqual(cfg.Time.Zones, wantZones) {
+		t.Fatalf("time zones = %#v, want %#v", cfg.Time.Zones, wantZones)
 	}
 }
 

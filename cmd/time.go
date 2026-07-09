@@ -7,6 +7,7 @@ import (
 	"strings"
 	stdtime "time"
 
+	"github.com/leo/leo-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,11 @@ var timeCmd = &cobra.Command{
 	Short: "Convert timestamps and common time strings",
 	Args:  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runTime(args, timeToZone, cmd.OutOrStdout(), stdtime.Now)
+		cfg, err := loadConfig()
+		if err != nil {
+			return err
+		}
+		return runTime(args, timeToZone, cfg, cmd.OutOrStdout(), stdtime.Now)
 	},
 }
 
@@ -26,7 +31,7 @@ func init() {
 	rootCmd.AddCommand(timeCmd)
 }
 
-func runTime(args []string, toZone string, stdout io.Writer, now func() stdtime.Time) error {
+func runTime(args []string, toZone string, cfg config.Config, stdout io.Writer, now func() stdtime.Time) error {
 	loc, err := parseZoneOffset(toZone)
 	if err != nil {
 		return err
@@ -42,8 +47,35 @@ func runTime(args []string, toZone string, stdout io.Writer, now func() stdtime.
 
 	output := parsed.In(loc)
 	zoneName, _ := output.Zone()
-	_, err = fmt.Fprintf(stdout, "时间: %s %s\n时间戳: %d\n毫秒: %d\n", output.Format("2006-01-02 15:04:05"), zoneName, output.Unix(), output.UnixMilli())
-	return err
+	if _, err := fmt.Fprintf(stdout, "时间: %s %s\n时间戳: %d\n毫秒: %d\n", output.Format("2006-01-02 15:04:05"), zoneName, output.Unix(), output.UnixMilli()); err != nil {
+		return err
+	}
+	return printConfiguredTimeZones(stdout, parsed, zoneName, cfg.Time.Zones)
+}
+
+func printConfiguredTimeZones(stdout io.Writer, value stdtime.Time, primaryZone string, zones []string) error {
+	wroteHeader := false
+	for _, zone := range zones {
+		loc, err := parseZoneOffset(zone)
+		if err != nil {
+			return fmt.Errorf("invalid configured time zone %q: %w", zone, err)
+		}
+		converted := value.In(loc)
+		zoneName, _ := converted.Zone()
+		if zoneName == primaryZone {
+			continue
+		}
+		if !wroteHeader {
+			if _, err := fmt.Fprintln(stdout, "常用时区:"); err != nil {
+				return err
+			}
+			wroteHeader = true
+		}
+		if _, err := fmt.Fprintf(stdout, "  %s: %s\n", zoneName, converted.Format("2006-01-02 15:04:05")); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func parseTimeValue(value string, defaultLoc *stdtime.Location) (stdtime.Time, error) {
