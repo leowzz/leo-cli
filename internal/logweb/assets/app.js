@@ -49,8 +49,29 @@ const elements = {
   jumpLatest: document.querySelector("#jump-latest"),
 };
 
+let messageDisclosureFrame = null;
+
+function scheduleMessageDisclosureUpdate() {
+  if (messageDisclosureFrame !== null) return;
+  messageDisclosureFrame = requestAnimationFrame(() => {
+    messageDisclosureFrame = null;
+    updateMessageDisclosure();
+  });
+}
+
 function initColumnResizing() {
   for (const handle of elements.logTable.querySelectorAll(".column-resize")) {
+    handle.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const column = elements.logTable.querySelector(`col[data-column="${handle.dataset.column}"]`);
+      const minWidth = Number(column.dataset.minWidth);
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      event.preventDefault();
+      closeCellActionMenu();
+      column.style.width = `${Math.max(minWidth, column.getBoundingClientRect().width + direction * 10)}px`;
+      scheduleMessageDisclosureUpdate();
+    });
+
     handle.addEventListener("pointerdown", (event) => {
       const column = elements.logTable.querySelector(`col[data-column="${handle.dataset.column}"]`);
       const startX = event.clientX;
@@ -64,17 +85,22 @@ function initColumnResizing() {
       const move = (moveEvent) => {
         const width = Math.max(minWidth, startWidth + moveEvent.clientX - startX);
         column.style.width = `${width}px`;
-        updateMessageDisclosure();
       };
+      let finished = false;
       const finish = () => {
+        if (finished) return;
+        finished = true;
         handle.classList.remove("dragging");
         handle.removeEventListener("pointermove", move);
         handle.removeEventListener("pointerup", finish);
         handle.removeEventListener("pointercancel", finish);
+        handle.removeEventListener("lostpointercapture", finish);
+        scheduleMessageDisclosureUpdate();
       };
       handle.addEventListener("pointermove", move);
       handle.addEventListener("pointerup", finish);
       handle.addEventListener("pointercancel", finish);
+      handle.addEventListener("lostpointercapture", finish);
     });
   }
 }
@@ -120,12 +146,20 @@ function positionCellActionMenu(trigger) {
 }
 
 async function copyText(value) {
-  if (navigator.clipboard?.writeText) {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(value);
       return;
     } catch (_) {
       // Fall through when clipboard permissions or the current origin reject access.
+    }
+  }
+  const previousActiveElement = document.activeElement;
+  const selection = window.getSelection();
+  const selectionRanges = [];
+  if (selection) {
+    for (let index = 0; index < selection.rangeCount; index++) {
+      selectionRanges.push(selection.getRangeAt(index).cloneRange());
     }
   }
   const textarea = document.createElement("textarea");
@@ -139,6 +173,16 @@ async function copyText(value) {
     copied = document.execCommand("copy");
   } finally {
     textarea.remove();
+    try {
+      if (selection) {
+        selection.removeAllRanges();
+        for (const range of selectionRanges) selection.addRange(range);
+      }
+    } finally {
+      if (previousActiveElement instanceof HTMLElement && previousActiveElement.isConnected) {
+        previousActiveElement.focus();
+      }
+    }
   }
   if (!copied) throw new Error("copy command rejected");
 }
@@ -680,11 +724,13 @@ elements.cellActionMenu.addEventListener("click", async (event) => {
     const value = isMessage ? trigger.dataset.message : trigger.dataset.value;
     try {
       await copyText(value);
-      if (state.actionMenuTrigger === trigger) closeCellActionMenu();
+      if (state.actionMenuTrigger !== trigger) return;
+      closeCellActionMenu({ restoreFocus: true });
       elements.searchStatus.textContent = isMessage ? "Message copied" : "Value copied";
     } catch (_) {
+      if (state.actionMenuTrigger !== trigger) return;
       elements.searchStatus.textContent = "Copy failed";
-      if (state.actionMenuTrigger === trigger) item.focus();
+      item.focus();
     }
   }
 });
@@ -698,6 +744,15 @@ elements.cellActionMenu.addEventListener("keydown", (event) => {
   const direction = event.key === "ArrowDown" ? 1 : -1;
   const next = current < 0 ? 0 : (current + direction + items.length) % items.length;
   items[next].focus();
+});
+
+elements.cellActionMenu.addEventListener("focusout", () => {
+  queueMicrotask(() => {
+    const trigger = state.actionMenuTrigger;
+    if (!trigger) return;
+    if (elements.cellActionMenu.contains(document.activeElement) || trigger.contains(document.activeElement)) return;
+    closeCellActionMenu();
+  });
 });
 
 document.addEventListener("pointerdown", (event) => {
@@ -747,7 +802,10 @@ window.addEventListener("beforeunload", () => {
   state.searchController?.abort();
   state.eventSource?.close();
 });
-window.addEventListener("resize", () => closeCellActionMenu());
+window.addEventListener("resize", () => {
+  closeCellActionMenu();
+  scheduleMessageDisclosureUpdate();
+});
 
 initColumnResizing();
 loadCatalog();

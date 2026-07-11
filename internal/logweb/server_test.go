@@ -299,10 +299,20 @@ func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
 		},
 		"/app.js": {
 			`initColumnResizing()`,
+			`scheduleMessageDisclosureUpdate`,
+			`lostpointercapture`,
+			`ArrowLeft`,
 			`openCellActionMenu`,
 			`closeCellActionMenu`,
+			`focusout`,
+			`queueMicrotask`,
 			`updateMessageDisclosure`,
 			`copyText`,
+			`window.isSecureContext`,
+			`if (state.actionMenuTrigger !== trigger) return`,
+			`const previousActiveElement = document.activeElement`,
+			`selection.getRangeAt(index).cloneRange()`,
+			`selection.addRange(range)`,
 		},
 	}
 
