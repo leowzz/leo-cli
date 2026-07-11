@@ -76,6 +76,18 @@ The top is the live edge.
 - Jump to latest scrolls to the top, resets the waiting count, and resumes live
   positioning.
 
+## Automatic Follow
+
+After the file catalog loads, the browser starts the default historical search
+and Follow concurrently. Historical search failure does not prevent Follow
+from staying active.
+
+Follow remains active across Clear, searches, and range changes. EventSource
+continues to handle temporary network reconnection. When the user explicitly
+clicks Stop follow, Follow stays disabled for the rest of that page session and
+no later Clear or search action restarts it. Reloading or reopening the page
+starts Follow automatically again.
+
 ## Implementation Boundary
 
 This is a browser-asset change in `internal/logweb/assets`. The Go search and
@@ -83,4 +95,5 @@ follow APIs already accept exact start/end timestamps and need no contract
 change. Embedded-asset tests will assert the new split range and Clear controls
 exist. Playwright verification will cover Clear state, immediate preset
 searches, one-click Clear exit, short ranges, newest-first insertion, scroll
-preservation, and the updated jump direction on desktop and mobile.
+preservation, automatic Follow with manual-stop persistence, and the updated
+jump direction on desktop and mobile.
