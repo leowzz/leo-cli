@@ -271,6 +271,64 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 	}
 }
 
+func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+
+	requiredByPath := map[string][]string{
+		"/": {
+			`id="log-table"`,
+			`data-column="time"`,
+			`data-column="level"`,
+			`data-column="search-id"`,
+			`data-column="user-id"`,
+			`data-column="source"`,
+			`data-column="message"`,
+			`class="column-resize"`,
+			`id="cell-action-menu" class="cell-action-menu" role="menu" hidden`,
+		},
+		"/app.css": {
+			`.column-resize`,
+			`col-resize`,
+			`.cell-action-trigger`,
+			`.message-text`,
+			`.message-row.expanded`,
+			`.cell-action-menu`,
+		},
+		"/app.js": {
+			`initColumnResizing()`,
+			`openCellActionMenu`,
+			`closeCellActionMenu`,
+			`updateMessageDisclosure`,
+			`copyText`,
+		},
+	}
+
+	for path, required := range requiredByPath {
+		request, _ := http.NewRequest(http.MethodGet, httpServer.URL+path, nil)
+		request.AddCookie(cookie)
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("GET %s status = %d, want 200", path, response.StatusCode)
+		}
+		for _, marker := range required {
+			if !bytes.Contains(body, []byte(marker)) {
+				t.Errorf("GET %s is missing %q", path, marker)
+			}
+		}
+	}
+}
+
 func TestWorkspaceScriptGuardsStaleSearchAndLiveOrder(t *testing.T) {
 	server := newTestServer(t, nil)
 	httpServer := httptest.NewServer(server)

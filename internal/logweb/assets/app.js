@@ -14,6 +14,7 @@ const state = {
   rangeSeconds: 3600,
   clearedAt: null,
   arrivalSequence: 0,
+  actionMenuTrigger: null,
 };
 
 const elements = {
@@ -37,14 +38,110 @@ const elements = {
   searchStatus: document.querySelector("#search-status"),
   resultCount: document.querySelector("#result-count"),
   logScroll: document.querySelector("#log-scroll"),
+  logTable: document.querySelector("#log-table"),
   logBody: document.querySelector("#log-body"),
   emptyState: document.querySelector("#empty-state"),
+  cellActionMenu: document.querySelector("#cell-action-menu"),
   follow: document.querySelector("#follow"),
   followStatus: document.querySelector("#follow-status"),
   waitingCount: document.querySelector("#waiting-count"),
   discardedCount: document.querySelector("#discarded-count"),
   jumpLatest: document.querySelector("#jump-latest"),
 };
+
+function initColumnResizing() {
+  for (const handle of elements.logTable.querySelectorAll(".column-resize")) {
+    handle.addEventListener("pointerdown", (event) => {
+      const column = elements.logTable.querySelector(`col[data-column="${handle.dataset.column}"]`);
+      const startX = event.clientX;
+      const startWidth = column.getBoundingClientRect().width;
+      const minWidth = Number(column.dataset.minWidth);
+      closeCellActionMenu();
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      handle.classList.add("dragging");
+
+      const move = (moveEvent) => {
+        const width = Math.max(minWidth, startWidth + moveEvent.clientX - startX);
+        column.style.width = `${width}px`;
+        updateMessageDisclosure();
+      };
+      const finish = () => {
+        handle.classList.remove("dragging");
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", finish);
+        handle.removeEventListener("pointercancel", finish);
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", finish);
+      handle.addEventListener("pointercancel", finish);
+    });
+  }
+}
+
+function openCellActionMenu(trigger) {
+  closeCellActionMenu();
+  state.actionMenuTrigger = trigger;
+  trigger.setAttribute("aria-expanded", "true");
+  const isMessage = trigger.dataset.actionKind === "message";
+  const filterItem = elements.cellActionMenu.querySelector('[data-action="filter"]');
+  const copyItem = elements.cellActionMenu.querySelector('[data-action="copy"]');
+  filterItem.hidden = isMessage;
+  copyItem.textContent = isMessage ? "Copy full message" : "Copy full value";
+  elements.cellActionMenu.hidden = false;
+  positionCellActionMenu(trigger);
+  elements.cellActionMenu.querySelector('[role="menuitem"]:not([hidden])').focus();
+}
+
+function closeCellActionMenu({ restoreFocus = false } = {}) {
+  const trigger = state.actionMenuTrigger;
+  elements.cellActionMenu.hidden = true;
+  if (!trigger) return;
+  trigger.setAttribute("aria-expanded", "false");
+  state.actionMenuTrigger = null;
+  if (restoreFocus && trigger.isConnected) trigger.focus();
+}
+
+function positionCellActionMenu(trigger) {
+  const gap = 4;
+  const viewportPadding = 6;
+  const triggerRect = trigger.getBoundingClientRect();
+  elements.cellActionMenu.style.left = "0px";
+  elements.cellActionMenu.style.top = "0px";
+  const menuRect = elements.cellActionMenu.getBoundingClientRect();
+  let left = triggerRect.right - menuRect.width;
+  let top = triggerRect.bottom + gap;
+  if (left < viewportPadding) left = Math.min(triggerRect.left, window.innerWidth - menuRect.width - viewportPadding);
+  if (top + menuRect.height > window.innerHeight - viewportPadding) top = triggerRect.top - menuRect.height - gap;
+  left = Math.max(viewportPadding, Math.min(left, window.innerWidth - menuRect.width - viewportPadding));
+  top = Math.max(viewportPadding, Math.min(top, window.innerHeight - menuRect.height - viewportPadding));
+  elements.cellActionMenu.style.left = `${left}px`;
+  elements.cellActionMenu.style.top = `${top}px`;
+}
+
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch (_) {
+      // Fall through when clipboard permissions or the current origin reject access.
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  let copied = false;
+  try {
+    textarea.select();
+    copied = document.execCommand("copy");
+  } finally {
+    textarea.remove();
+  }
+  if (!copied) throw new Error("copy command rejected");
+}
 
 async function loadCatalog() {
   try {
@@ -268,15 +365,36 @@ function appendRecord(record, live) {
   appendFieldCell(row, record.source, "source");
 
   const messageCell = document.createElement("td");
-  const message = document.createElement("button");
-  message.type = "button";
-  message.className = "message-button";
-  message.textContent = record.message || record.raw || "";
-  message.title = record.truncated ? "Line truncated by server limit" : "Expand message";
-  message.addEventListener("click", () => message.classList.toggle("expanded"));
-  messageCell.append(message);
+  messageCell.className = "interactive-cell message-cell";
+  if (record.truncated) messageCell.title = "Line truncated by server limit";
+  const messageRow = document.createElement("div");
+  messageRow.className = "message-row";
+  const disclosure = document.createElement("button");
+  disclosure.type = "button";
+  disclosure.className = "message-disclosure";
+  disclosure.hidden = true;
+  disclosure.setAttribute("aria-expanded", "false");
+  disclosure.setAttribute("aria-label", "Expand message");
+  disclosure.textContent = ">";
+  disclosure.addEventListener("click", () => {
+    const expanded = messageRow.classList.toggle("expanded");
+    disclosure.setAttribute("aria-expanded", String(expanded));
+    disclosure.setAttribute("aria-label", expanded ? "Collapse message" : "Expand message");
+    disclosure.textContent = expanded ? "v" : ">";
+    updateMessageDisclosure(messageRow);
+  });
+  const messageText = document.createElement("span");
+  messageText.className = "message-text";
+  messageText.textContent = record.message || record.raw || "";
+  const trigger = createCellActionTrigger("Message actions");
+  trigger.classList.add("message-action-trigger");
+  trigger.dataset.actionKind = "message";
+  trigger.dataset.message = messageText.textContent;
+  messageRow.append(disclosure, messageText, trigger);
+  messageCell.append(messageRow);
   row.append(messageCell);
   insertNewestRow(row, live);
+  updateMessageDisclosure(messageRow);
   state.records++;
   updateRecordCount();
   elements.emptyState.hidden = true;
@@ -305,23 +423,44 @@ function appendLevelCell(row, value, fileName) {
 function appendFieldCell(row, value, target) {
   const cell = document.createElement("td");
   if (value) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "field-button";
-    button.textContent = value;
-    button.title = `Filter by ${value}`;
-    button.addEventListener("click", () => {
-      const filter = {
-        "search-id": elements.searchID,
-        "user-id": elements.userID,
-        source: elements.source,
-      }[target];
-      filter.value = value;
-      filter.focus();
-    });
-    cell.append(button);
+    cell.className = "interactive-cell";
+    const valueText = document.createElement("span");
+    valueText.className = "field-value";
+    valueText.textContent = value;
+    const trigger = createCellActionTrigger(`Actions for ${target}`);
+    trigger.dataset.fieldTarget = target;
+    trigger.dataset.value = value;
+    cell.append(valueText, trigger);
   } else cell.textContent = "-";
   row.append(cell);
+}
+
+function createCellActionTrigger(label) {
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "cell-action-trigger";
+  trigger.textContent = "\u22ee";
+  trigger.setAttribute("aria-label", label);
+  trigger.setAttribute("aria-haspopup", "menu");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.addEventListener("click", () => openCellActionMenu(trigger));
+  return trigger;
+}
+
+function updateMessageDisclosure(messageRow) {
+  const rows = messageRow ? [messageRow] : elements.logBody.querySelectorAll(".message-row");
+  for (const row of rows) {
+    const disclosure = row.querySelector(".message-disclosure");
+    const messageText = row.querySelector(".message-text");
+    if (row.classList.contains("expanded")) {
+      disclosure.hidden = false;
+      continue;
+    }
+    disclosure.hidden = true;
+    const multiline = messageText.textContent.includes("\n");
+    const overflowed = messageText.scrollWidth > messageText.clientWidth + 1;
+    disclosure.hidden = !multiline && !overflowed;
+  }
 }
 
 function appendCell(row, text, className) {
@@ -368,6 +507,7 @@ function insertHistoricalRow(row) {
 }
 
 function sortTimestampedRows() {
+  closeCellActionMenu();
   const rows = [...elements.logBody.children];
   const timestamped = rows
     .filter((row) => row.dataset.live !== "true" && row.dataset.timestamp)
@@ -378,6 +518,7 @@ function sortTimestampedRows() {
 }
 
 function clearRecords() {
+  closeCellActionMenu();
   elements.logBody.replaceChildren();
   state.seen.clear();
   state.records = 0;
@@ -392,6 +533,7 @@ function clearRecords() {
 function enforceRowLimit() {
   while (elements.logBody.children.length > MAX_ROWS) {
     const oldest = elements.logBody.lastElementChild;
+    if (oldest.contains(state.actionMenuTrigger)) closeCellActionMenu();
     if (oldest.dataset.recordKey) state.seen.delete(oldest.dataset.recordKey);
     oldest.remove();
     state.discarded++;
@@ -517,6 +659,60 @@ function clearConsole() {
   elements.searchStatus.textContent = `Cleared at ${state.clearedAt.toLocaleTimeString(undefined, { hour12: false })}`;
 }
 
+elements.cellActionMenu.addEventListener("click", async (event) => {
+  const item = event.target.closest('[role="menuitem"]');
+  const trigger = state.actionMenuTrigger;
+  if (!item || !trigger) return;
+  if (item.dataset.action === "filter") {
+    const filter = {
+      "search-id": elements.searchID,
+      "user-id": elements.userID,
+      source: elements.source,
+    }[trigger.dataset.fieldTarget];
+    if (!filter) return;
+    filter.value = trigger.dataset.value;
+    closeCellActionMenu();
+    filter.focus();
+    return;
+  }
+  if (item.dataset.action === "copy") {
+    const isMessage = trigger.dataset.actionKind === "message";
+    const value = isMessage ? trigger.dataset.message : trigger.dataset.value;
+    try {
+      await copyText(value);
+      if (state.actionMenuTrigger === trigger) closeCellActionMenu();
+      elements.searchStatus.textContent = isMessage ? "Message copied" : "Value copied";
+    } catch (_) {
+      elements.searchStatus.textContent = "Copy failed";
+      if (state.actionMenuTrigger === trigger) item.focus();
+    }
+  }
+});
+
+elements.cellActionMenu.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  const items = [...elements.cellActionMenu.querySelectorAll('[role="menuitem"]:not([hidden])')];
+  if (!items.length) return;
+  event.preventDefault();
+  const current = items.indexOf(document.activeElement);
+  const direction = event.key === "ArrowDown" ? 1 : -1;
+  const next = current < 0 ? 0 : (current + direction + items.length) % items.length;
+  items[next].focus();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!state.actionMenuTrigger) return;
+  if (elements.cellActionMenu.contains(event.target) || state.actionMenuTrigger.contains(event.target)) return;
+  closeCellActionMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.actionMenuTrigger) {
+    event.preventDefault();
+    closeCellActionMenu({ restoreFocus: true });
+  }
+});
+
 elements.search.addEventListener("click", runSearch);
 elements.cancel.addEventListener("click", () => state.searchController?.abort());
 elements.clear.addEventListener("click", clearConsole);
@@ -535,6 +731,7 @@ document.querySelector("#select-none").addEventListener("click", () => {
   updateFileCheckboxes();
 });
 elements.logScroll.addEventListener("scroll", () => {
+  closeCellActionMenu();
   state.autoScroll = elements.logScroll.scrollTop < 32;
   if (state.autoScroll && state.waiting) {
     state.waiting = 0;
@@ -550,5 +747,7 @@ window.addEventListener("beforeunload", () => {
   state.searchController?.abort();
   state.eventSource?.close();
 });
+window.addEventListener("resize", () => closeCellActionMenu());
 
+initColumnResizing();
 loadCatalog();
