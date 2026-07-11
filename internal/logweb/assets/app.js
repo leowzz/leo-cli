@@ -56,6 +56,7 @@ async function loadCatalog() {
     updateScanSize();
     setConnection("online", `${state.files.length} files`);
     runSearch();
+    startFollow();
   } catch (error) {
     setConnection("error", "Catalog unavailable");
     appendSystem(error.message || String(error), true);

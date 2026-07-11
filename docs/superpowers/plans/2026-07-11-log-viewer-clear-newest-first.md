@@ -46,3 +46,12 @@
 - [ ] Capture and inspect desktop and 390px mobile screenshots for overlap and overflow, then remove generated artifacts.
 - [ ] Run `gofmt -w internal/logweb`, `go vet ./...`, `go test ./... -count=1`, and `go test -race ./internal/logweb ./internal/logview ./cmd -count=1`.
 - [ ] Review `git diff --check` and verify no sensitive example names or generated files are present.
+
+## Task 4: Automatic Follow
+
+- [x] Extend the embedded-script test to require the catalog success path to call `runSearch()` and then `startFollow()`.
+- [x] Run `go test ./internal/logweb -run TestWorkspaceScriptStartsFollowAfterCatalog -count=1` and confirm it fails before the startup call exists.
+- [x] Start Follow immediately after launching the initial historical search in `loadCatalog()`.
+- [x] Keep `startFollow()` out of Clear, manual Search, and range handlers so Stop follow persists for the page session.
+- [x] Use Playwright to verify the page opens in `Live` state, Stop follow remains stopped after Clear and range search, and a reload starts Follow again.
+- [x] Run the focused test, full Go tests, race tests, JS syntax check, and browser console check.
