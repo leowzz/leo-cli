@@ -42,6 +42,7 @@ type followState struct {
 	pending   []byte
 	truncated bool
 	missing   bool
+	lastTime  *time.Time
 }
 
 func (f *Follower) Follow(ctx context.Context, ids []string, emit func(FollowEvent) error) error {
@@ -179,6 +180,7 @@ func (f *Follower) pollState(ctx context.Context, state *followState, maxLineByt
 		state.pending = nil
 		state.truncated = false
 		state.missing = false
+		state.lastTime = nil
 		if err := emit(FollowEvent{Type: "system", FileID: state.file.ID, Message: state.file.RelativePath + " rotated; following replacement"}); err != nil {
 			return err
 		}
@@ -192,6 +194,7 @@ func (f *Follower) pollState(ctx context.Context, state *followState, maxLineByt
 		state.pendingAt = 0
 		state.pending = nil
 		state.truncated = false
+		state.lastTime = nil
 		if err := emit(FollowEvent{Type: "system", FileID: state.file.ID, Message: state.file.RelativePath + " truncated; restarted at beginning"}); err != nil {
 			return err
 		}
@@ -245,6 +248,7 @@ func consumeFollowBytes(state *followState, data []byte, maxLineBytes int, emit 
 			line := strings.TrimSuffix(string(state.pending), "\r")
 			record := ParseLine(state.file.ID, state.file.RelativePath, state.pendingAt, []byte(line))
 			record.Truncated = state.truncated
+			record = inheritFollowTime(state, record)
 			if err := emit(FollowEvent{Type: "record", FileID: state.file.ID, Record: &record}); err != nil {
 				return err
 			}
@@ -270,7 +274,19 @@ func flushFollowPending(state *followState, emit func(FollowEvent) error) error 
 	}
 	record := ParseLine(state.file.ID, state.file.RelativePath, state.pendingAt, state.pending)
 	record.Truncated = state.truncated
+	record = inheritFollowTime(state, record)
 	state.pending = nil
 	state.truncated = false
 	return emit(FollowEvent{Type: "record", FileID: state.file.ID, Record: &record})
+}
+
+func inheritFollowTime(state *followState, record Record) Record {
+	if record.Timestamp != nil {
+		timestamp := *record.Timestamp
+		state.lastTime = &timestamp
+	} else if !record.Parsed && state.lastTime != nil {
+		timestamp := *state.lastTime
+		record.Timestamp = &timestamp
+	}
+	return record
 }
