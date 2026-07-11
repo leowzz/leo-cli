@@ -248,7 +248,7 @@ Start an isolated demo server with a valid record followed by an exception line.
 - [ ] **Step 4: Scan for sensitive names and generated artifacts**
 
 ```bash
-if rg -n -i 'mindcraft' . -g '!bin/**' -g '!.git/**'; then exit 1; fi
+if rg -n -i 'mind''craft' . -g '!bin/**' -g '!.git/**'; then exit 1; fi
 git status --short
 ```
 
@@ -257,4 +257,3 @@ Expected: no sensitive-name matches and only intended changes. Remove `.playwrig
 - [ ] **Step 5: Commit any verification fixes**
 
 If verification required source changes, repeat the relevant focused and full checks, then commit only those fixes. If no changes were required, do not create an empty commit.
-
