@@ -247,17 +247,52 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 	}
 	for _, required := range []string{
 		`id="file-tree"`,
-		`id="range"`,
+		`role="group"`,
+		`aria-labelledby="range-label"`,
+		`id="range-apply"`,
+		`id="range-menu"`,
+		`value="60"`,
+		`value="300"`,
+		`value="600"`,
 		`id="include"`,
 		`id="exclude"`,
 		`id="search"`,
 		`id="cancel"`,
+		`id="clear"`,
 		`id="log-body"`,
 		`id="follow"`,
 		`id="jump-latest"`,
 	} {
 		if !bytes.Contains(body, []byte(required)) {
 			t.Errorf("workspace is missing %s", required)
+		}
+	}
+}
+
+func TestWorkspaceScriptGuardsStaleSearchAndLiveOrder(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+	request, _ := http.NewRequest(http.MethodGet, httpServer.URL+"/app.js", nil)
+	request.AddCookie(cookie)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`state.searchController !== controller`,
+		`row.dataset.live = live ? "true" : "false"`,
+		`insertHistoricalRow(row)`,
+		`row.dataset.live !== "true" && row.dataset.timestamp`,
+	} {
+		if !bytes.Contains(body, []byte(required)) {
+			t.Errorf("workspace script is missing %q", required)
 		}
 	}
 }

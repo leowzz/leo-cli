@@ -11,11 +11,15 @@ const state = {
   discarded: 0,
   records: 0,
   seen: new Set(),
+  rangeSeconds: 3600,
+  clearedAt: null,
+  arrivalSequence: 0,
 };
 
 const elements = {
   connection: document.querySelector("#connection"),
-  range: document.querySelector("#range"),
+  rangeApply: document.querySelector("#range-apply"),
+  rangeMenu: document.querySelector("#range-menu"),
   include: document.querySelector("#include"),
   exclude: document.querySelector("#exclude"),
   searchID: document.querySelector("#search-id"),
@@ -25,6 +29,7 @@ const elements = {
   caseSensitive: document.querySelector("#case-sensitive"),
   search: document.querySelector("#search"),
   cancel: document.querySelector("#cancel"),
+  clear: document.querySelector("#clear"),
   scanSize: document.querySelector("#scan-size"),
   fileTree: document.querySelector("#file-tree"),
   levels: document.querySelector("#levels"),
@@ -58,7 +63,7 @@ async function loadCatalog() {
 }
 
 function selectRecentFiles() {
-  const cutoff = Date.now() - Number(elements.range.value) * 1000;
+  const cutoff = Date.now() - state.rangeSeconds * 1000;
   state.selected.clear();
   for (const file of state.files) {
     if (new Date(file.modifiedAt).getTime() >= cutoff) state.selected.add(file.id);
@@ -154,11 +159,11 @@ function updateScanSize() {
 }
 
 function searchQuery() {
-  const seconds = Number(elements.range.value);
   const now = new Date();
+  const start = state.clearedAt || new Date(now.getTime() - state.rangeSeconds * 1000);
   return {
     fileIds: [...state.selected],
-    start: new Date(now.getTime() - seconds * 1000).toISOString(),
+    start: start.toISOString(),
     end: now.toISOString(),
     include: parseTerms(elements.include.value),
     exclude: parseTerms(elements.exclude.value),
@@ -178,8 +183,7 @@ async function runSearch() {
     appendSystem("Select at least one log file", true);
     return;
   }
-  const seconds = Number(elements.range.value);
-  if (seconds > 86400 && !window.confirm(`Scan ${elements.scanSize.textContent}?`)) return;
+  if (!state.clearedAt && state.rangeSeconds > 86400 && !window.confirm(`Scan ${elements.scanSize.textContent}?`)) return;
 
   clearRecords();
   const controller = new AbortController();
@@ -195,17 +199,23 @@ async function runSearch() {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(await response.text());
-    await consumeNDJSON(response.body, handleSearchEvent);
+    await consumeNDJSON(response.body, (event) => {
+      if (state.searchController !== controller) return;
+      handleSearchEvent(event);
+    });
   } catch (error) {
+    if (state.searchController !== controller) return;
     if (error.name === "AbortError") elements.searchStatus.textContent = "Cancelled";
     else {
       elements.searchStatus.textContent = "Search failed";
       appendSystem(error.message || String(error), true);
     }
   } finally {
-    if (state.searchController === controller) state.searchController = null;
-    elements.search.disabled = false;
-    elements.cancel.disabled = true;
+    if (state.searchController === controller) {
+      state.searchController = null;
+      elements.search.disabled = false;
+      elements.cancel.disabled = true;
+    }
   }
 }
 
@@ -232,6 +242,7 @@ function handleSearchEvent(event) {
     elements.searchStatus.textContent = `${progress.scannedFiles}/${progress.candidateFiles} files, ${formatBytes(progress.scannedBytes)}/${formatBytes(progress.totalBytes)}`;
   }
   if (event.type === "done") {
+    sortTimestampedRows();
     const labels = { complete: "Search complete", limit: "Result limit reached", timeout: "Search timed out" };
     elements.searchStatus.textContent = labels[event.reason] || event.reason;
   }
@@ -243,6 +254,9 @@ function appendRecord(record, live) {
   state.seen.add(recordKey);
   const row = document.createElement("tr");
   row.dataset.recordKey = recordKey;
+  row.dataset.arrival = String(++state.arrivalSequence);
+  const timestamp = Date.parse(record.timestamp || "");
+  if (!Number.isNaN(timestamp)) row.dataset.timestamp = String(timestamp);
   appendCell(row, displayTime(record), "");
   appendLevelCell(row, record.level, record.fileName);
   appendFieldCell(row, record.searchId, "search-id");
@@ -258,19 +272,10 @@ function appendRecord(record, live) {
   message.addEventListener("click", () => message.classList.toggle("expanded"));
   messageCell.append(message);
   row.append(messageCell);
-  elements.logBody.append(row);
+  insertNewestRow(row, live);
   state.records++;
-  enforceRowLimit();
   updateRecordCount();
   elements.emptyState.hidden = true;
-
-  if (live) {
-    if (state.autoScroll) scrollLatest();
-    else {
-      state.waiting++;
-      updateFollowCounters();
-    }
-  }
 }
 
 function appendLevelCell(row, value, fileName) {
@@ -323,16 +328,49 @@ function appendCell(row, text, className) {
   return cell;
 }
 
-function appendSystem(message, warning) {
+function appendSystem(message, warning, live = false) {
   const row = document.createElement("tr");
   row.className = warning ? "system-row warning-row" : "system-row";
+  row.dataset.arrival = String(++state.arrivalSequence);
   const cell = document.createElement("td");
   cell.colSpan = 6;
   cell.textContent = message;
   row.append(cell);
-  elements.logBody.append(row);
-  enforceRowLimit();
+  insertNewestRow(row, live);
   elements.emptyState.hidden = true;
+}
+
+function insertNewestRow(row, live) {
+  const wasAtTop = state.autoScroll;
+  row.dataset.live = live ? "true" : "false";
+  if (live) elements.logBody.prepend(row);
+  else insertHistoricalRow(row);
+  const insertedHeight = row.getBoundingClientRect().height;
+  enforceRowLimit();
+  if (!live) return;
+  if (wasAtTop) {
+    scrollLatest();
+    return;
+  }
+  elements.logScroll.scrollTop += insertedHeight;
+  state.waiting++;
+  updateFollowCounters();
+}
+
+function insertHistoricalRow(row) {
+  let insertionPoint = elements.logBody.firstElementChild;
+  while (insertionPoint?.dataset.live === "true") insertionPoint = insertionPoint.nextElementSibling;
+  elements.logBody.insertBefore(row, insertionPoint);
+}
+
+function sortTimestampedRows() {
+  const rows = [...elements.logBody.children];
+  const timestamped = rows
+    .filter((row) => row.dataset.live !== "true" && row.dataset.timestamp)
+    .sort((left, right) => Number(right.dataset.timestamp) - Number(left.dataset.timestamp));
+  let timestampIndex = 0;
+  const ordered = rows.map((row) => row.dataset.live !== "true" && row.dataset.timestamp ? timestamped[timestampIndex++] : row);
+  elements.logBody.replaceChildren(...ordered);
 }
 
 function clearRecords() {
@@ -341,6 +379,7 @@ function clearRecords() {
   state.records = 0;
   state.waiting = 0;
   state.discarded = 0;
+  state.arrivalSequence = 0;
   elements.emptyState.hidden = false;
   updateRecordCount();
   updateFollowCounters();
@@ -348,7 +387,7 @@ function clearRecords() {
 
 function enforceRowLimit() {
   while (elements.logBody.children.length > MAX_ROWS) {
-    const oldest = elements.logBody.firstElementChild;
+    const oldest = elements.logBody.lastElementChild;
     if (oldest.dataset.recordKey) state.seen.delete(oldest.dataset.recordKey);
     oldest.remove();
     state.discarded++;
@@ -380,7 +419,7 @@ function startFollow() {
     if (event.type === "record" && event.record) appendRecord(event.record, true);
     if (event.type === "system") {
       if (/rotated|truncated/.test(event.message || "")) clearSeenForFile(event.fileId);
-      appendSystem(event.message, false);
+      appendSystem(event.message, false, true);
     }
   };
   source.onerror = () => {
@@ -406,7 +445,7 @@ function updateFollowCounters() {
 
 function scrollLatest() {
   requestAnimationFrame(() => {
-    elements.logScroll.scrollTop = elements.logScroll.scrollHeight;
+    elements.logScroll.scrollTop = 0;
     state.autoScroll = true;
     state.waiting = 0;
     updateFollowCounters();
@@ -451,11 +490,36 @@ function clearSeenForFile(fileID) {
   for (const key of state.seen) if (key.startsWith(prefix)) state.seen.delete(key);
 }
 
+function selectedRangeLabel() {
+  return elements.rangeMenu.options[elements.rangeMenu.selectedIndex].textContent;
+}
+
+function applySelectedRange() {
+  state.rangeSeconds = Number(elements.rangeMenu.value);
+  state.clearedAt = null;
+  elements.rangeApply.textContent = selectedRangeLabel();
+  elements.rangeApply.setAttribute("aria-label", `Apply ${selectedRangeLabel()} range`);
+  runSearch();
+}
+
+function clearConsole() {
+  const activeSearch = state.searchController;
+  state.searchController = null;
+  activeSearch?.abort();
+  state.clearedAt = new Date();
+  clearRecords();
+  elements.search.disabled = false;
+  elements.cancel.disabled = true;
+  elements.searchStatus.textContent = `Cleared at ${state.clearedAt.toLocaleTimeString(undefined, { hour12: false })}`;
+}
+
 elements.search.addEventListener("click", runSearch);
 elements.cancel.addEventListener("click", () => state.searchController?.abort());
+elements.clear.addEventListener("click", clearConsole);
+elements.rangeApply.addEventListener("click", applySelectedRange);
+elements.rangeMenu.addEventListener("change", applySelectedRange);
 elements.follow.addEventListener("click", startFollow);
 elements.jumpLatest.addEventListener("click", scrollLatest);
-elements.range.addEventListener("change", updateScanSize);
 elements.levels.addEventListener("change", () => {});
 document.querySelector("#select-all").addEventListener("click", () => {
   state.selected = new Set(state.files.map((file) => file.id));
@@ -466,8 +530,7 @@ document.querySelector("#select-none").addEventListener("click", () => {
   updateFileCheckboxes();
 });
 elements.logScroll.addEventListener("scroll", () => {
-  const distance = elements.logScroll.scrollHeight - elements.logScroll.scrollTop - elements.logScroll.clientHeight;
-  state.autoScroll = distance < 32;
+  state.autoScroll = elements.logScroll.scrollTop < 32;
   if (state.autoScroll && state.waiting) {
     state.waiting = 0;
     updateFollowCounters();
