@@ -299,6 +299,9 @@ func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
 		},
 		"/app.js": {
 			`initColumnResizing()`,
+			`actionMenuSession: 0`,
+			`const actionMenuSession = state.actionMenuSession`,
+			`state.actionMenuSession !== actionMenuSession`,
 			`scheduleMessageDisclosureUpdate`,
 			`lostpointercapture`,
 			`ArrowLeft`,

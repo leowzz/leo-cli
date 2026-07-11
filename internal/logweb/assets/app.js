@@ -15,6 +15,7 @@ const state = {
   clearedAt: null,
   arrivalSequence: 0,
   actionMenuTrigger: null,
+  actionMenuSession: 0,
 };
 
 const elements = {
@@ -107,6 +108,7 @@ function initColumnResizing() {
 
 function openCellActionMenu(trigger) {
   closeCellActionMenu();
+  state.actionMenuSession += 1;
   state.actionMenuTrigger = trigger;
   trigger.setAttribute("aria-expanded", "true");
   const isMessage = trigger.dataset.actionKind === "message";
@@ -121,6 +123,7 @@ function openCellActionMenu(trigger) {
 
 function closeCellActionMenu({ restoreFocus = false } = {}) {
   const trigger = state.actionMenuTrigger;
+  state.actionMenuSession += 1;
   elements.cellActionMenu.hidden = true;
   if (!trigger) return;
   trigger.setAttribute("aria-expanded", "false");
@@ -706,6 +709,7 @@ function clearConsole() {
 elements.cellActionMenu.addEventListener("click", async (event) => {
   const item = event.target.closest('[role="menuitem"]');
   const trigger = state.actionMenuTrigger;
+  const actionMenuSession = state.actionMenuSession;
   if (!item || !trigger) return;
   if (item.dataset.action === "filter") {
     const filter = {
@@ -725,10 +729,12 @@ elements.cellActionMenu.addEventListener("click", async (event) => {
     try {
       await copyText(value);
       if (state.actionMenuTrigger !== trigger) return;
+      if (state.actionMenuSession !== actionMenuSession) return;
       closeCellActionMenu({ restoreFocus: true });
       elements.searchStatus.textContent = isMessage ? "Message copied" : "Value copied";
     } catch (_) {
       if (state.actionMenuTrigger !== trigger) return;
+      if (state.actionMenuSession !== actionMenuSession) return;
       elements.searchStatus.textContent = "Copy failed";
       item.focus();
     }
