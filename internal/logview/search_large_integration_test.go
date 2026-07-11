@@ -28,7 +28,7 @@ func TestSearchStreamsSparseGigabyteWithBoundedAllocations(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&before)
 	go func() {
-		done <- searcher.Search(context.Background(), Query{Include: []string{"match"}}, func(event Event) error {
+		done <- searcher.Search(context.Background(), Query{Include: []string{"match"}, IncludeUnparsed: true}, func(event Event) error {
 			if event.Type == "result" {
 				select {
 				case firstResult <- struct{}{}:
