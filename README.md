@@ -214,7 +214,9 @@ leo log --host 0.0.0.0 --port 9031
 
 The default listener is `127.0.0.1` on an automatically selected port. On a remote server, open the printed URL manually through SSH port forwarding, or explicitly bind to an internal-network address. Plain HTTP on a non-loopback address is only appropriate on a trusted development network.
 
-The workspace discovers supported text logs recursively, streams bounded on-demand searches, and follows active files with rotation/truncation notices. It reads files in place: it does not copy log contents, build a persistent index, or store queries, tokens, sessions, or UI state. Stop the server with Ctrl-C.
+The workspace discovers supported text logs recursively, streams bounded on-demand searches, and follows active files with rotation/truncation notices. Time presets include the last 1, 5, and 10 minutes as well as longer ranges. Selecting a preset or clicking the current range button searches immediately. Clear keeps all filters, empties the table, and uses the click time as the next search start until a preset is reapplied. New records appear at the top; scrolling down preserves the older records being read while new-record counts accumulate.
+
+Logs are read in place: the viewer does not copy log contents, build a persistent index, or store queries, tokens, sessions, or UI state. Stop the server with Ctrl-C.
 
 ## Configuration
 
