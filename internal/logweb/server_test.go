@@ -115,7 +115,7 @@ func TestSearchRequiresSameOriginAndStreamsNDJSON(t *testing.T) {
 	httpServer := httptest.NewServer(server)
 	defer httpServer.Close()
 	cookie := bootstrapCookie(t, server, httpServer.URL)
-	body := `{"include":["match"]}`
+	body := `{"include":["match"],"includeUnparsed":true}`
 
 	for _, origin := range []string{"", "https://evil.example"} {
 		request, _ := http.NewRequest(http.MethodPost, httpServer.URL+"/api/search", strings.NewReader(body))
@@ -259,6 +259,8 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 		`id="search"`,
 		`id="cancel"`,
 		`id="clear"`,
+		`id="show-unparsed"`,
+		`type="checkbox" checked`,
 		`id="log-body"`,
 		`id="follow"`,
 		`id="jump-latest"`,
@@ -315,6 +317,33 @@ func TestWorkspaceScriptStartsFollowAfterCatalog(t *testing.T) {
 	}
 	if !bytes.Contains(body, []byte("runSearch();\n    startFollow();")) {
 		t.Fatal("workspace does not start Follow after the initial search")
+	}
+}
+
+func TestWorkspaceScriptSupportsUnparsedFilter(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+	request, _ := http.NewRequest(http.MethodGet, httpServer.URL+"/app.js", nil)
+	request.AddCookie(cookie)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`includeUnparsed: elements.showUnparsed.checked`,
+		`elements.showUnparsed.addEventListener("change", runSearch)`,
+		`if (!record.parsed && !elements.showUnparsed.checked) return`,
+	} {
+		if !bytes.Contains(body, []byte(required)) {
+			t.Errorf("workspace script is missing %q", required)
+		}
 	}
 }
 

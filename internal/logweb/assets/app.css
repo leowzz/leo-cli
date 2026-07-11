@@ -218,6 +218,7 @@ input::placeholder { color: #5f6870; }
 .level-section { padding: 9px 9px 11px; border-top: 1px solid var(--border); }
 .level-section h2 { margin-bottom: 7px; }
 .level-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.unparsed-toggle { margin-top: 8px; }
 .level-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .level-toggle span { display: grid; place-items: center; height: 24px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); font: 10px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
 .level-toggle input:checked + span { border-color: currentColor; background: #22282d; color: var(--text); }

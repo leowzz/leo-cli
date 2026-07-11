@@ -33,6 +33,7 @@ const elements = {
   scanSize: document.querySelector("#scan-size"),
   fileTree: document.querySelector("#file-tree"),
   levels: document.querySelector("#levels"),
+  showUnparsed: document.querySelector("#show-unparsed"),
   searchStatus: document.querySelector("#search-status"),
   resultCount: document.querySelector("#result-count"),
   logScroll: document.querySelector("#log-scroll"),
@@ -170,6 +171,7 @@ function searchQuery() {
     exclude: parseTerms(elements.exclude.value),
     regex: elements.regex.checked,
     caseSensitive: elements.caseSensitive.checked,
+    includeUnparsed: elements.showUnparsed.checked,
     levels: [...elements.levels.querySelectorAll("input:checked")].map((input) => input.value),
     searchIds: parseTerms(elements.searchID.value),
     userIds: parseTerms(elements.userID.value),
@@ -250,6 +252,7 @@ function handleSearchEvent(event) {
 }
 
 function appendRecord(record, live) {
+  if (!record.parsed && !elements.showUnparsed.checked) return;
   const recordKey = `${record.fileId}:${record.offset}`;
   if (state.seen.has(recordKey)) return;
   state.seen.add(recordKey);
@@ -519,6 +522,7 @@ elements.cancel.addEventListener("click", () => state.searchController?.abort())
 elements.clear.addEventListener("click", clearConsole);
 elements.rangeApply.addEventListener("click", applySelectedRange);
 elements.rangeMenu.addEventListener("change", applySelectedRange);
+elements.showUnparsed.addEventListener("change", runSearch);
 elements.follow.addEventListener("click", startFollow);
 elements.jumpLatest.addEventListener("click", scrollLatest);
 elements.levels.addEventListener("change", () => {});
