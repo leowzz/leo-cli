@@ -11,14 +11,25 @@ reader's position when they inspect older records.
 
 ## Time Ranges
 
-The Range control adds these options before the existing one-hour option:
+The Range control becomes a split control:
+
+- The left side is a button showing the active preset, such as
+  `Last 1 minute`.
+- The right side opens the preset menu.
+
+The menu adds these options before the existing one-hour option:
 
 - Last 1 minute
 - Last 5 minutes
 - Last 10 minutes
 
 The existing one-hour and multi-hour/day options remain available. Selecting a
-normal range computes `start = search time - range` and `end = search time`.
+menu item updates the left button, removes any Clear anchor, and immediately
+searches with `start = search time - range` and `end = search time`.
+
+Clicking the left button reapplies its displayed preset, removes any Clear
+anchor, and immediately searches. This provides a one-click way to leave Clear
+mode without opening the menu.
 
 ## Clear Behavior
 
@@ -30,12 +41,14 @@ The query action row gains a Clear button. Clicking it:
 3. preserves selected files, include/exclude terms, structured filters, regex,
    case sensitivity, and level filters;
 4. leaves an active follow connection running;
-5. changes the Range display to `Since clear HH:mm:ss`;
-6. sets the next historical search range to `clearedAt -> search click time`.
+5. leaves the range button label unchanged;
+6. displays `Cleared at HH:mm:ss` in the result status area;
+7. sets the next historical search range to `clearedAt -> search click time`.
 
-Selecting any normal Range option removes the Clear anchor. Clear does not
-automatically execute a historical search because its primary purpose is to
-empty the current console and observe future follow records.
+Selecting a Range menu item or clicking the current Range button removes the
+Clear anchor and immediately searches. Clear itself does not execute a
+historical search because its primary purpose is to empty the current console
+and observe future follow records.
 
 ## Newest-First Records
 
@@ -67,6 +80,7 @@ The top is the live edge.
 
 This is a browser-asset change in `internal/logweb/assets`. The Go search and
 follow APIs already accept exact start/end timestamps and need no contract
-change. Embedded-asset tests will assert the new controls exist. Playwright
-verification will cover Clear state, short ranges, newest-first insertion,
-scroll preservation, and the updated jump direction on desktop and mobile.
+change. Embedded-asset tests will assert the new split range and Clear controls
+exist. Playwright verification will cover Clear state, immediate preset
+searches, one-click Clear exit, short ranges, newest-first insertion, scroll
+preservation, and the updated jump direction on desktop and mobile.
