@@ -10,21 +10,21 @@ import (
 )
 
 func TestResolveFindsProjectFromNestedDirectory(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft-service")
+	root := filepath.Join(t.TempDir(), "demo_01-service")
 	cwd := filepath.Join(root, "app", "handlers")
 	if err := os.MkdirAll(cwd, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	projects := map[string]config.ProjectConfig{
-		"mindcraft": {Logs: []string{"runtime/logs"}},
+		"demo_01": {Logs: []string{"runtime/logs"}},
 	}
 
 	got, err := Resolve(cwd, "", projects)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if got.Name != "mindcraft" || got.Root != root {
-		t.Fatalf("Resolve() = %#v, want name mindcraft root %q", got, root)
+	if got.Name != "demo_01" || got.Root != root {
+		t.Fatalf("Resolve() = %#v, want name demo_01 root %q", got, root)
 	}
 	if len(got.Config.Logs) != 1 || got.Config.Logs[0] != "runtime/logs" {
 		t.Fatalf("config = %#v", got.Config)
@@ -32,12 +32,12 @@ func TestResolveFindsProjectFromNestedDirectory(t *testing.T) {
 }
 
 func TestResolveUsesCustomMatch(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft-api")
+	root := filepath.Join(t.TempDir(), "demo_01-api")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	projects := map[string]config.ProjectConfig{
-		"mc": {Match: "mindcraft", Logs: []string{"logs"}},
+		"mc": {Match: "demo_01", Logs: []string{"logs"}},
 	}
 
 	got, err := Resolve(root, "", projects)
@@ -51,33 +51,33 @@ func TestResolveUsesCustomMatch(t *testing.T) {
 
 func TestResolveSelectsNearestAncestor(t *testing.T) {
 	outer := filepath.Join(t.TempDir(), "platform")
-	inner := filepath.Join(outer, "mindcraft-api")
+	inner := filepath.Join(outer, "demo_01-api")
 	cwd := filepath.Join(inner, "pkg")
 	if err := os.MkdirAll(cwd, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	projects := map[string]config.ProjectConfig{
-		"platform":  {Logs: []string{"logs"}},
-		"mindcraft": {Logs: []string{"runtime/logs"}},
+		"platform": {Logs: []string{"logs"}},
+		"demo_01":  {Logs: []string{"runtime/logs"}},
 	}
 
 	got, err := Resolve(cwd, "", projects)
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
-	if got.Name != "mindcraft" || got.Root != inner {
-		t.Fatalf("Resolve() = %#v, want nearest mindcraft at %q", got, inner)
+	if got.Name != "demo_01" || got.Root != inner {
+		t.Fatalf("Resolve() = %#v, want nearest demo_01 at %q", got, inner)
 	}
 }
 
 func TestResolveRejectsAmbiguousNearestAncestor(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft-api")
+	root := filepath.Join(t.TempDir(), "demo_01-api")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	projects := map[string]config.ProjectConfig{
-		"mc":        {Match: "mindcraft"},
-		"mindcraft": {},
+		"mc":      {Match: "demo_01"},
+		"demo_01": {},
 	}
 
 	_, err := Resolve(root, "", projects)
@@ -88,10 +88,10 @@ func TestResolveRejectsAmbiguousNearestAncestor(t *testing.T) {
 
 func TestResolveRequiresMatch(t *testing.T) {
 	cwd := t.TempDir()
-	projects := map[string]config.ProjectConfig{"mindcraft": {}}
+	projects := map[string]config.ProjectConfig{"demo_01": {}}
 
 	_, err := Resolve(cwd, "", projects)
-	if err == nil || !strings.Contains(err.Error(), "mindcraft") || !strings.Contains(err.Error(), "--project") {
+	if err == nil || !strings.Contains(err.Error(), "demo_01") || !strings.Contains(err.Error(), "--project") {
 		t.Fatalf("Resolve() error = %v, want configured projects and --project hint", err)
 	}
 }
@@ -99,7 +99,7 @@ func TestResolveRequiresMatch(t *testing.T) {
 func TestResolveExplicitProjectStillRequiresMatchingAncestor(t *testing.T) {
 	cwd := t.TempDir()
 	projects := map[string]config.ProjectConfig{
-		"mc": {Match: "mindcraft"},
+		"mc": {Match: "demo_01"},
 	}
 
 	_, err := Resolve(cwd, "mc", projects)
@@ -109,13 +109,13 @@ func TestResolveExplicitProjectStillRequiresMatchingAncestor(t *testing.T) {
 }
 
 func TestResolveExplicitProjectBreaksAmbiguity(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft-api")
+	root := filepath.Join(t.TempDir(), "demo_01-api")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	projects := map[string]config.ProjectConfig{
-		"mc":        {Match: "mindcraft", Logs: []string{"short/logs"}},
-		"mindcraft": {Logs: []string{"long/logs"}},
+		"mc":      {Match: "demo_01", Logs: []string{"short/logs"}},
+		"demo_01": {Logs: []string{"long/logs"}},
 	}
 
 	got, err := Resolve(root, "mc", projects)
@@ -128,7 +128,7 @@ func TestResolveExplicitProjectBreaksAmbiguity(t *testing.T) {
 }
 
 func TestResolveRejectsUnknownExplicitProject(t *testing.T) {
-	_, err := Resolve(t.TempDir(), "missing", map[string]config.ProjectConfig{"mindcraft": {}})
+	_, err := Resolve(t.TempDir(), "missing", map[string]config.ProjectConfig{"demo_01": {}})
 	if err == nil || !strings.Contains(err.Error(), "unknown project") {
 		t.Fatalf("Resolve() error = %v, want unknown project", err)
 	}

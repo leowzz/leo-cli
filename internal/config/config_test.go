@@ -81,7 +81,7 @@ func TestLoadYAML(t *testing.T) {
 
 func TestLoadProjects(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	contents := "proj:\n  mindcraft:\n    logs:\n      - runtime/logs\n      - /docker-runtime\n  mc:\n    match: mindcraft\n    logs:\n      - var/log\n"
+	contents := "proj:\n  demo_01:\n    logs:\n      - runtime/logs\n      - /docker-runtime\n  mc:\n    match: demo_01\n    logs:\n      - var/log\n"
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
@@ -92,8 +92,8 @@ func TestLoadProjects(t *testing.T) {
 	}
 
 	want := map[string]ProjectConfig{
-		"mindcraft": {Logs: []string{"runtime/logs", "/docker-runtime"}},
-		"mc":        {Match: "mindcraft", Logs: []string{"var/log"}},
+		"demo_01": {Logs: []string{"runtime/logs", "/docker-runtime"}},
+		"mc":      {Match: "demo_01", Logs: []string{"var/log"}},
 	}
 	if !reflect.DeepEqual(cfg.Projects, want) {
 		t.Fatalf("projects = %#v, want %#v", cfg.Projects, want)

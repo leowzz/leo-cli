@@ -183,7 +183,7 @@ Configure each project and its allowed log directories:
 
 ```yaml
 proj:
-  mindcraft:
+  demo_01:
     logs:
       - runtime/logs
       - /docker-runtime
@@ -200,7 +200,7 @@ leo log
 ```yaml
 proj:
   mc:
-    match: mindcraft
+    match: demo_01
     logs:
       - runtime/logs
 ```
@@ -255,7 +255,7 @@ time:
     - +0
     - America/Los_Angeles
 proj:
-  mindcraft:
+  demo_01:
     logs:
       - runtime/logs
 ```

@@ -26,7 +26,7 @@ func TestLogCommandDefaults(t *testing.T) {
 }
 
 func TestPrepareLogRuntimeResolvesProjectAndRelativeRoot(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft-api")
+	root := filepath.Join(t.TempDir(), "demo_01-api")
 	cwd := filepath.Join(root, "app", "handlers")
 	logs := filepath.Join(root, "runtime", "logs")
 	if err := os.MkdirAll(cwd, 0o755); err != nil {
@@ -39,14 +39,14 @@ func TestPrepareLogRuntimeResolvesProjectAndRelativeRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{Projects: map[string]config.ProjectConfig{
-		"mindcraft": {Logs: []string{"runtime/logs", "missing"}},
+		"demo_01": {Logs: []string{"runtime/logs", "missing"}},
 	}}
 
 	runtime, warnings, err := prepareLogRuntime(cfg, cwd, "")
 	if err != nil {
 		t.Fatalf("prepareLogRuntime() error = %v", err)
 	}
-	if runtime.project.Name != "mindcraft" || runtime.project.Root != root {
+	if runtime.project.Name != "demo_01" || runtime.project.Root != root {
 		t.Fatalf("project = %#v", runtime.project)
 	}
 	if len(runtime.catalog.Files()) != 1 || len(runtime.catalog.Roots()) != 1 {
@@ -65,7 +65,7 @@ func TestPrepareLogRuntimeRejectsMissingConfiguration(t *testing.T) {
 }
 
 func TestPrintLogStartup(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "mindcraft")
+	root := filepath.Join(t.TempDir(), "demo_01")
 	logs := filepath.Join(root, "logs")
 	if err := os.MkdirAll(logs, 0o755); err != nil {
 		t.Fatal(err)
@@ -74,15 +74,15 @@ func TestPrintLogStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime, _, err := prepareLogRuntime(config.Config{Projects: map[string]config.ProjectConfig{
-		"mindcraft": {Logs: []string{"logs"}},
-	}}, root, "mindcraft")
+		"demo_01": {Logs: []string{"logs"}},
+	}}, root, "demo_01")
 	if err != nil {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
 	printLogStartup(&output, runtime, []string{"skip warning"}, "http://127.0.0.1:9031/bootstrap?token=secret")
 	got := output.String()
-	for _, want := range []string{"Project: mindcraft", "Root: " + root, "Logs:", logs, "Warning: skip warning", "Open: http://127.0.0.1:9031/bootstrap?token=secret"} {
+	for _, want := range []string{"Project: demo_01", "Root: " + root, "Logs:", logs, "Warning: skip warning", "Open: http://127.0.0.1:9031/bootstrap?token=secret"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("startup output missing %q:\n%s", want, got)
 		}

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestParseLineParsesMindCraftLoguruRecord(t *testing.T) {
+func TestParseLineParsesDemo01LoguruRecord(t *testing.T) {
 	line := []byte("2026-07-11 14:23:45.123 | INFO | search-123 | user-456 | app.api:handle:42 - request completed - cached")
 
 	got := ParseLine("file-1", "api/error.log", 99, line)

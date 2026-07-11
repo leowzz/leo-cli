@@ -35,7 +35,7 @@
 
 ## Task 1: Project Configuration
 
-- [ ] Add a failing config test loading `proj.mindcraft.logs` and `proj.mc.match` while preserving a config with no `proj` section.
+- [ ] Add a failing config test loading `proj.demo_01.logs` and `proj.mc.match` while preserving a config with no `proj` section.
 - [ ] Run `go test ./internal/config` and confirm it fails because `Projects` is undefined.
 - [ ] Add `Projects map[string]ProjectConfig \`yaml:"proj"\`` and `ProjectConfig{Match string, Logs []string}` without changing generated defaults.
 - [ ] Run `go test ./internal/config` and confirm all tests pass.

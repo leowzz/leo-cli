@@ -23,7 +23,7 @@ system.
 - Search large log sets on demand and stream results as they are found.
 - Follow active files, handle rotation, pause visual scrolling, and resume at
   the latest record.
-- Parse MindCraft's common Loguru fields for quick filtering while still
+- Parse demo_01's common Loguru fields for quick filtering while still
   displaying unknown text formats.
 - Ship the server and web UI inside the existing Go binary without a separate
   runtime or frontend build toolchain.
@@ -49,7 +49,7 @@ leo log
 Useful overrides are:
 
 ```bash
-leo log --project mindcraft
+leo log --project demo_01
 leo log --host 0.0.0.0 --port 9031
 ```
 
@@ -72,7 +72,7 @@ The existing `~/.config/leo-cli/config.yaml` gains a short `proj` mapping:
 
 ```yaml
 proj:
-  mindcraft:
+  demo_01:
     logs:
       - runtime/logs
       - /docker-runtime
@@ -84,7 +84,7 @@ can override the match string:
 ```yaml
 proj:
   mc:
-    match: mindcraft
+    match: demo_01
     logs:
       - runtime/logs
 ```
@@ -192,7 +192,7 @@ another executable.
 - Before a multi-day scan starts, the UI shows the candidate file count and
   total byte size.
 
-The parser recognizes the current MindCraft Loguru layout:
+The parser recognizes the current demo_01 Loguru layout:
 
 ```text
 time | level | search_id | user_id | source - message
@@ -286,7 +286,7 @@ and explicitly saved queries without persisting log contents.
 - Root validation covers relative and absolute paths, missing roots, unreadable
   roots, traversal, symlink replacement, hidden files, binary files, compressed
   files, and recursive suffix filtering.
-- Parser fixtures cover the MindCraft Loguru format and unknown raw lines.
+- Parser fixtures cover the demo_01 Loguru format and unknown raw lines.
 - Search tests cover time boundaries, include and exclude terms, field filters,
   case sensitivity, regex errors, cancellation, timeout, and result limits.
 - Follow tests use temporary files to cover append, truncate, rename rotation,
@@ -300,7 +300,7 @@ and explicitly saved queries without persisting log contents.
 
 ## Success Criteria
 
-- From any directory below a configured MindCraft root, `leo log` identifies
+- From any directory below a configured demo_01 root, `leo log` identifies
   the project and opens a reachable workspace URL.
 - The workspace cannot read files outside configured log roots.
 - A recent-hour search begins returning matches without first loading or

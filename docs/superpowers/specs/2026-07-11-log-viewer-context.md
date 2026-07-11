@@ -2,14 +2,14 @@
 
 **Date:** 2026-07-11
 **Target repository:** `/Users/leo/Desktop/work/leo-cli`
-**Source application inspected:** `/Users/leo/Desktop/work/mindcraft`
+**Source application inspected:** `/Users/leo/Desktop/work/demo_01`
 **Primary design:** `docs/superpowers/specs/2026-07-11-log-viewer-design.md`
 
 ## Purpose
 
 This note preserves the discovery context and confirmed product decisions so a
 new task opened directly in the `leo-cli` workspace can continue without
-re-reading the full MindCraft repository or repeating the product discussion.
+re-reading the full demo_01 repository or repeating the product discussion.
 
 The next task should read this note and the primary design, ask the user to
 confirm any requested spec changes, and then create an implementation plan.
@@ -39,7 +39,7 @@ The selected product boundary is a temporary browser-based reader, not a new
 logging platform. The user explicitly chose on-demand scanning with a recent
 one-hour default and no persistent index.
 
-## MindCraft Evidence
+## demo_01 Evidence
 
 The actual directory is `runtime/logs`, not `runtime/log`.
 
@@ -106,7 +106,7 @@ Keys were intentionally shortened for convenient manual editing:
 
 ```yaml
 proj:
-  mindcraft:
+  demo_01:
     logs:
       - runtime/logs
       - /docker-runtime
@@ -118,7 +118,7 @@ short alias:
 ```yaml
 proj:
   mc:
-    match: mindcraft
+    match: demo_01
     logs:
       - runtime/logs
 ```
