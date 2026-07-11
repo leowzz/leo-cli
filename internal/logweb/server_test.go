@@ -115,7 +115,7 @@ func TestSearchRequiresSameOriginAndStreamsNDJSON(t *testing.T) {
 	httpServer := httptest.NewServer(server)
 	defer httpServer.Close()
 	cookie := bootstrapCookie(t, server, httpServer.URL)
-	body := `{"include":["match"]}`
+	body := `{"include":["match"],"includeUnparsed":true}`
 
 	for _, origin := range []string{"", "https://evil.example"} {
 		request, _ := http.NewRequest(http.MethodPost, httpServer.URL+"/api/search", strings.NewReader(body))
@@ -259,6 +259,8 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 		`id="search"`,
 		`id="cancel"`,
 		`id="clear"`,
+		`id="show-unparsed"`,
+		`type="checkbox" checked`,
 		`id="log-body"`,
 		`id="follow"`,
 		`id="jump-latest"`,
@@ -266,6 +268,89 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 		if !bytes.Contains(body, []byte(required)) {
 			t.Errorf("workspace is missing %s", required)
 		}
+	}
+}
+
+func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+
+	requiredByPath := map[string][]string{
+		"/": {
+			`id="log-table"`,
+			`data-column="time"`,
+			`data-column="level"`,
+			`data-column="search-id"`,
+			`data-column="user-id"`,
+			`data-column="source"`,
+			`data-column="message"`,
+			`class="column-resize"`,
+			`id="cell-action-menu" class="cell-action-menu" role="menu" hidden`,
+		},
+		"/app.css": {
+			`.column-resize`,
+			`col-resize`,
+			`.cell-action-trigger`,
+			`.message-text`,
+			`.message-row.expanded`,
+			`.cell-action-menu`,
+		},
+		"/app.js": {
+			`initColumnResizing()`,
+			`actionMenuSession: 0`,
+			`const actionMenuSession = state.actionMenuSession`,
+			`state.actionMenuSession !== actionMenuSession`,
+			`scheduleMessageDisclosureUpdate`,
+			`lostpointercapture`,
+			`ArrowLeft`,
+			`openCellActionMenu`,
+			`closeCellActionMenu`,
+			`focusout`,
+			`setTimeout`,
+			`updateMessageDisclosure`,
+			`copyText`,
+			`window.isSecureContext`,
+			`if (state.actionMenuTrigger !== trigger) return`,
+			`const previousActiveElement = document.activeElement`,
+			`selection.getRangeAt(index).cloneRange()`,
+			`selection.addRange(range)`,
+		},
+	}
+
+	for path, required := range requiredByPath {
+		request, _ := http.NewRequest(http.MethodGet, httpServer.URL+path, nil)
+		request.AddCookie(cookie)
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("GET %s status = %d, want 200", path, response.StatusCode)
+		}
+		for _, marker := range required {
+			if !bytes.Contains(body, []byte(marker)) {
+				t.Errorf("GET %s is missing %q", path, marker)
+			}
+		}
+	}
+}
+
+func TestWorkspaceScriptLetsPointerClickFinishBeforeFocusoutClose(t *testing.T) {
+	body, err := embeddedAssets.ReadFile("assets/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	focusoutHandler := `elements.cellActionMenu.addEventListener("focusout", () => {
+  setTimeout(() => {`
+	if !bytes.Contains(body, []byte(focusoutHandler)) {
+		t.Fatal("action menu focusout closes before a pointer click on another menu item can finish")
 	}
 }
 
@@ -290,6 +375,54 @@ func TestWorkspaceScriptGuardsStaleSearchAndLiveOrder(t *testing.T) {
 		`row.dataset.live = live ? "true" : "false"`,
 		`insertHistoricalRow(row)`,
 		`row.dataset.live !== "true" && row.dataset.timestamp`,
+	} {
+		if !bytes.Contains(body, []byte(required)) {
+			t.Errorf("workspace script is missing %q", required)
+		}
+	}
+}
+
+func TestWorkspaceScriptStartsFollowAfterCatalog(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+	request, _ := http.NewRequest(http.MethodGet, httpServer.URL+"/app.js", nil)
+	request.AddCookie(cookie)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(body, []byte("runSearch();\n    startFollow();")) {
+		t.Fatal("workspace does not start Follow after the initial search")
+	}
+}
+
+func TestWorkspaceScriptSupportsUnparsedFilter(t *testing.T) {
+	server := newTestServer(t, nil)
+	httpServer := httptest.NewServer(server)
+	defer httpServer.Close()
+	cookie := bootstrapCookie(t, server, httpServer.URL)
+	request, _ := http.NewRequest(http.MethodGet, httpServer.URL+"/app.js", nil)
+	request.AddCookie(cookie)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`includeUnparsed: elements.showUnparsed.checked`,
+		`elements.showUnparsed.addEventListener("change", runSearch)`,
+		`if (!record.parsed && !elements.showUnparsed.checked) return`,
 	} {
 		if !bytes.Contains(body, []byte(required)) {
 			t.Errorf("workspace script is missing %q", required)

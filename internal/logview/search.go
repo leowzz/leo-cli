@@ -14,17 +14,18 @@ import (
 )
 
 type Query struct {
-	FileIDs       []string  `json:"fileIds"`
-	Start         time.Time `json:"start"`
-	End           time.Time `json:"end"`
-	Include       []string  `json:"include"`
-	Exclude       []string  `json:"exclude"`
-	Regex         bool      `json:"regex"`
-	CaseSensitive bool      `json:"caseSensitive"`
-	Levels        []string  `json:"levels"`
-	SearchIDs     []string  `json:"searchIds"`
-	UserIDs       []string  `json:"userIds"`
-	Sources       []string  `json:"sources"`
+	FileIDs         []string  `json:"fileIds"`
+	Start           time.Time `json:"start"`
+	End             time.Time `json:"end"`
+	Include         []string  `json:"include"`
+	Exclude         []string  `json:"exclude"`
+	Regex           bool      `json:"regex"`
+	CaseSensitive   bool      `json:"caseSensitive"`
+	IncludeUnparsed bool      `json:"includeUnparsed"`
+	Levels          []string  `json:"levels"`
+	SearchIDs       []string  `json:"searchIds"`
+	UserIDs         []string  `json:"userIds"`
+	Sources         []string  `json:"sources"`
 }
 
 type Progress struct {
@@ -280,6 +281,9 @@ func newQueryMatcher(query Query) (*queryMatcher, error) {
 }
 
 func (m *queryMatcher) matches(record Record) bool {
+	if !m.query.IncludeUnparsed && !record.Parsed {
+		return false
+	}
 	if record.Timestamp != nil {
 		if !m.query.Start.IsZero() && record.Timestamp.Before(m.query.Start) {
 			return false
@@ -345,6 +349,7 @@ func scanSearchFile(ctx context.Context, catalog *Catalog, file File, maxLineByt
 
 	reader := bufio.NewReaderSize(handle, 64*1024)
 	var offset int64
+	var lastTimestamp *time.Time
 	for {
 		if err := ctx.Err(); err != nil {
 			return offset, err
@@ -373,6 +378,13 @@ func scanSearchFile(ctx context.Context, catalog *Catalog, file File, maxLineByt
 				if len(line) > 0 || len(fragment) > 0 {
 					record := ParseLine(file.ID, file.RelativePath, lineOffset, []byte(lineText))
 					record.Truncated = truncated
+					if record.Timestamp != nil {
+						timestamp := *record.Timestamp
+						lastTimestamp = &timestamp
+					} else if !record.Parsed && lastTimestamp != nil {
+						timestamp := *lastTimestamp
+						record.Timestamp = &timestamp
+					}
 					if matcher.matches(record) {
 						if err := emit(record); err != nil {
 							return offset, err

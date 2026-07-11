@@ -49,7 +49,7 @@ func TestFollowStartsNearEndAndStreamsAppends(t *testing.T) {
 func TestFollowReportsTruncationAndContinues(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "app.log")
-	writeTestFile(t, path, []byte("initial line\n"))
+	writeTestFile(t, path, []byte("2026-07-11 10:00:00.000 | INFO | search | user | api - initial\n"))
 	catalog := testCatalog(t, root)
 	follower := NewFollower(catalog)
 	follower.PollInterval = 10 * time.Millisecond
@@ -64,9 +64,12 @@ func TestFollowReportsTruncationAndContinues(t *testing.T) {
 		return event.Type == "system" && strings.Contains(event.Message, "truncated")
 	})
 	appendTestFile(t, path, "after truncate\n")
-	waitForFollow(t, events, func(event FollowEvent) bool {
+	record := waitForFollow(t, events, func(event FollowEvent) bool {
 		return event.Record != nil && event.Record.Message == "after truncate"
 	})
+	if record.Record.Timestamp != nil {
+		t.Fatalf("record after truncation inherited stale timestamp: %#v", record.Record)
+	}
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("Follow() error = %v", err)
@@ -76,7 +79,7 @@ func TestFollowReportsTruncationAndContinues(t *testing.T) {
 func TestFollowHandlesRenameRotation(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "app.log")
-	writeTestFile(t, path, []byte("initial\n"))
+	writeTestFile(t, path, []byte("2026-07-11 10:00:00.000 | INFO | search | user | api - initial\n"))
 	catalog := testCatalog(t, root)
 	follower := NewFollower(catalog)
 	follower.PollInterval = 10 * time.Millisecond
@@ -91,9 +94,12 @@ func TestFollowHandlesRenameRotation(t *testing.T) {
 	waitForFollow(t, events, func(event FollowEvent) bool {
 		return event.Type == "system" && strings.Contains(event.Message, "rotated")
 	})
-	waitForFollow(t, events, func(event FollowEvent) bool {
+	record := waitForFollow(t, events, func(event FollowEvent) bool {
 		return event.Record != nil && event.Record.Message == "new file"
 	})
+	if record.Record.Timestamp != nil {
+		t.Fatalf("record after rotation inherited stale timestamp: %#v", record.Record)
+	}
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("Follow() error = %v", err)
@@ -135,6 +141,26 @@ func TestConsumeFollowBytesTracksEachLineOffset(t *testing.T) {
 	}
 	if len(records) != 2 || records[0].Offset != 0 || records[1].Offset != 4 {
 		t.Fatalf("records = %#v, want offsets 0 and 4", records)
+	}
+}
+
+func TestConsumeFollowBytesInheritsTimestampForUnparsedRecords(t *testing.T) {
+	state := &followState{file: File{ID: "file-1", RelativePath: "app.log"}}
+	var records []Record
+	data := "2026-07-11 10:00:00.000 | ERROR | search | user | api - failed\n" +
+		"java.lang.IllegalStateException: failed\n"
+	err := consumeFollowBytes(state, []byte(data), 1024, func(event FollowEvent) error {
+		records = append(records, *event.Record)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 2 || records[0].Timestamp == nil {
+		t.Fatalf("records = %#v, want two records with parsed anchor", records)
+	}
+	if records[1].Parsed || records[1].Timestamp == nil || !records[1].Timestamp.Equal(*records[0].Timestamp) {
+		t.Fatalf("continuation = %#v, want inherited timestamp %v", records[1], records[0].Timestamp)
 	}
 }
 

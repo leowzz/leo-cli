@@ -95,6 +95,10 @@
             <label class="level-toggle warning"><input type="checkbox" value="WARNING"><span>WARNING</span></label>
             <label class="level-toggle error"><input type="checkbox" value="ERROR"><span>ERROR</span></label>
           </div>
+          <label class="toggle unparsed-toggle">
+            <input id="show-unparsed" type="checkbox" checked>
+            <span>Show unparsed</span>
+          </label>
         </div>
       </aside>
 
@@ -104,23 +108,23 @@
           <span id="result-count">0 records</span>
         </div>
         <div id="log-scroll" class="log-scroll">
-          <table class="log-table">
+          <table id="log-table" class="log-table">
             <colgroup>
-              <col class="col-time">
-              <col class="col-level">
-              <col class="col-id">
-              <col class="col-id">
-              <col class="col-source">
-              <col class="col-message">
+              <col class="col-time" data-column="time" data-min-width="120">
+              <col class="col-level" data-column="level" data-min-width="60">
+              <col class="col-id" data-column="search-id" data-min-width="90">
+              <col class="col-id" data-column="user-id" data-min-width="90">
+              <col class="col-source" data-column="source" data-min-width="110">
+              <col class="col-message" data-column="message">
             </colgroup>
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Level</th>
-                <th>Search ID</th>
-                <th>User ID</th>
-                <th>Source</th>
-                <th>Message</th>
+                <th scope="col">Time<button class="column-resize" type="button" data-column="time" aria-label="Resize Time column"></button></th>
+                <th scope="col">Level<button class="column-resize" type="button" data-column="level" aria-label="Resize Level column"></button></th>
+                <th scope="col">Search ID<button class="column-resize" type="button" data-column="search-id" aria-label="Resize Search ID column"></button></th>
+                <th scope="col">User ID<button class="column-resize" type="button" data-column="user-id" aria-label="Resize User ID column"></button></th>
+                <th scope="col">Source<button class="column-resize" type="button" data-column="source" aria-label="Resize Source column"></button></th>
+                <th scope="col">Message</th>
               </tr>
             </thead>
             <tbody id="log-body"></tbody>
@@ -139,6 +143,10 @@
       <button id="jump-latest" class="button" type="button" disabled>Jump to latest</button>
     </footer>
   </main>
+  <div id="cell-action-menu" class="cell-action-menu" role="menu" hidden>
+    <button type="button" role="menuitem" data-action="filter">Add to filter</button>
+    <button type="button" role="menuitem" data-action="copy">Copy full value</button>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>

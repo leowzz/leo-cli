@@ -72,6 +72,63 @@ func TestSearchHonorsParsedTimeAndKeepsUnparseableTime(t *testing.T) {
 	}
 }
 
+func TestSearchInheritsTimestampForUnparsedRecords(t *testing.T) {
+	root := t.TempDir()
+	contents := "2026-07-11 10:00:00.000 | ERROR | search | user | api - request failed\n" +
+		"java.lang.IllegalStateException: failed\n" +
+		"2026-07-11 10:02:00.000 | INFO | search | user | api - recovered\n"
+	path := filepath.Join(root, "app.log")
+	writeTestFile(t, path, []byte(contents))
+	now := time.Now()
+	if err := os.Chtimes(path, now, now); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Date(2026, 7, 11, 9, 59, 0, 0, time.Local)
+	end := time.Date(2026, 7, 11, 10, 1, 0, 0, time.Local)
+
+	events, err := collectSearch(t, NewSearcher(testCatalog(t, root)), Query{
+		Start: start, End: end, IncludeUnparsed: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	records := searchRecords(events)
+	if len(records) != 2 {
+		t.Fatalf("records = %#v, want parsed record and inherited exception", records)
+	}
+	if records[1].Parsed || records[1].Timestamp == nil || !records[1].Timestamp.Equal(*records[0].Timestamp) {
+		t.Fatalf("inherited record = %#v, want unparsed record at %v", records[1], records[0].Timestamp)
+	}
+}
+
+func TestSearchKeepsLeadingUnparsedRecordTimelessAndIsolatesFiles(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "a.log"), []byte("2026-07-11 10:00:00.000 | INFO | a | user | api - anchor\n"))
+	writeTestFile(t, filepath.Join(root, "b.log"), []byte("leading stack line\n"))
+
+	events, err := collectSearch(t, NewSearcher(testCatalog(t, root)), Query{IncludeUnparsed: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range searchRecords(events) {
+		if record.FileName == "b.log" && record.Timestamp != nil {
+			t.Fatalf("leading record inherited timestamp across files: %#v", record)
+		}
+	}
+}
+
+func TestSearchCanExcludeUnparsedRecords(t *testing.T) {
+	catalog := testCatalogWithLine(t, "2026-07-11 10:00:00.000 | INFO | search | user | api - parsed\nstack trace\n")
+	events, err := collectSearch(t, NewSearcher(catalog), Query{IncludeUnparsed: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	records := searchRecords(events)
+	if len(records) != 1 || !records[0].Parsed {
+		t.Fatalf("records = %#v, want only parsed record", records)
+	}
+}
+
 func TestSearchSkipsFilesOlderThanStart(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "old.log")
@@ -104,7 +161,7 @@ func TestSearchStopsAtResultLimit(t *testing.T) {
 	searcher := NewSearcher(catalog)
 	searcher.MaxResults = 2
 
-	events, err := collectSearch(t, searcher, Query{Include: []string{"match"}})
+	events, err := collectSearch(t, searcher, Query{Include: []string{"match"}, IncludeUnparsed: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +193,7 @@ func TestSearchMarksOversizedLinesTruncated(t *testing.T) {
 	searcher := NewSearcher(catalog)
 	searcher.MaxLineBytes = 8
 
-	events, err := collectSearch(t, searcher, Query{Include: []string{"abc"}})
+	events, err := collectSearch(t, searcher, Query{Include: []string{"abc"}, IncludeUnparsed: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +214,7 @@ func TestSearchWarnsWhenOneFileDisappears(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	events, err := collectSearch(t, NewSearcher(catalog), Query{Include: []string{"match"}})
+	events, err := collectSearch(t, NewSearcher(catalog), Query{Include: []string{"match"}, IncludeUnparsed: true})
 	if err != nil {
 		t.Fatal(err)
 	}
