@@ -102,6 +102,12 @@ special copy commands without adding permanent inline buttons.
 Menu commands provide concise status feedback in the existing result/status
 surface or an unobtrusive transient status element.
 
+Copy commands prefer the Clipboard API when it is available. Because the log
+viewer is commonly opened from a private-network HTTP address that is not a
+secure browser context, they fall back to selecting a temporary off-screen
+textarea and invoking the browser copy command. The temporary element is
+always removed and the user's existing selection is not used as the source.
+
 Clipboard failures do not alter filters or Message state. The UI reports the
 failure and leaves the menu open so the user can fall back to native text
 selection. Successful commands close the menu.
