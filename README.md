@@ -2,12 +2,13 @@
 
 [中文](https://github.com/leowzz/leo-cli/blob/main/README.zh.md) | English
 
-`leo-cli` builds a `leo` binary for personal command-line workflows. It currently covers four practical jobs:
+`leo-cli` builds a `leo` binary for personal command-line workflows. It currently covers five practical jobs:
 
 - Index local Git repositories and pick one from an interactive terminal list.
 - Generate a shell helper so `repo` can jump into the selected repository.
 - Build SQL `IN` values from clipboard, txt, or csv input and copy the result.
 - Copy container images with registry aliases through `skopeo copy`.
+- Search and follow configured project logs in a temporary browser workspace.
 
 ## Install
 
@@ -176,6 +177,45 @@ leo docker copy python:3.12-slim t --platform linux/arm64/v8
 
 `docker copy` calls [skopeo](https://github.com/containers/skopeo). It does not use the local Docker daemon or `docker context`. The default platform is `linux/amd64`.
 
+## Log Viewer
+
+Configure each project and its allowed log directories:
+
+```yaml
+proj:
+  demo_01:
+    logs:
+      - runtime/logs
+      - /docker-runtime
+```
+
+From the project root or any child directory, run:
+
+```bash
+leo log
+```
+
+`leo` walks upward from the current directory, finds the nearest ancestor whose name contains the project key, starts a temporary HTTP server, and prints a one-time URL. Relative log directories are resolved from that detected project root. An alias can use a different match string:
+
+```yaml
+proj:
+  mc:
+    match: demo_01
+    logs:
+      - runtime/logs
+```
+
+Useful overrides:
+
+```bash
+leo log --project mc
+leo log --host 0.0.0.0 --port 9031
+```
+
+The default listener is `127.0.0.1` on an automatically selected port. On a remote server, open the printed URL manually through SSH port forwarding, or explicitly bind to an internal-network address. Plain HTTP on a non-loopback address is only appropriate on a trusted development network.
+
+The workspace discovers supported text logs recursively, streams bounded on-demand searches, and follows active files with rotation/truncation notices. It reads files in place: it does not copy log contents, build a persistent index, or store queries, tokens, sessions, or UI state. Stop the server with Ctrl-C.
+
 ## Configuration
 
 Default config path:
@@ -214,6 +254,10 @@ time:
     - +9
     - +0
     - America/Los_Angeles
+proj:
+  demo_01:
+    logs:
+      - runtime/logs
 ```
 
 `time.zones` controls the extra common timezone rows printed by `leo time`. It accepts UTC offsets like `+9` and IANA names like `America/Los_Angeles`.
@@ -249,6 +293,7 @@ The repository index uses SQLite with WAL. Rows are upserted by absolute reposit
 | `leo time [VALUE]` | Convert current time, timestamps, and common time strings |
 | `leo docker list` | Print Docker registry aliases |
 | `leo docker copy SOURCE DESTINATION` | Copy an image with `skopeo copy` |
+| `leo log` | Open the current project's temporary log workspace |
 
 ## Development
 
@@ -303,6 +348,9 @@ This requires an installed and authenticated [GitHub CLI](https://cli.github.com
 cmd/                 Cobra command wiring
 internal/config/     YAML config, default paths, path expansion
 internal/dockercopy/ Docker image reference and registry alias resolution
+internal/logview/    Safe log discovery, parsing, search, and follow
+internal/logweb/     Authenticated HTTP APIs and embedded browser workspace
+internal/project/    Current-project matching and root resolution
 internal/refresh/    Initial index and background metadata refresh
 internal/repoindex/  Git repository scanning and metadata extraction
 internal/repoui/     Bubble Tea repository picker

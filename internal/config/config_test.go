@@ -79,6 +79,42 @@ func TestLoadYAML(t *testing.T) {
 	}
 }
 
+func TestLoadProjects(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	contents := "proj:\n  demo_01:\n    logs:\n      - runtime/logs\n      - /docker-runtime\n  mc:\n    match: demo_01\n    logs:\n      - var/log\n"
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	want := map[string]ProjectConfig{
+		"demo_01": {Logs: []string{"runtime/logs", "/docker-runtime"}},
+		"mc":      {Match: "demo_01", Logs: []string{"var/log"}},
+	}
+	if !reflect.DeepEqual(cfg.Projects, want) {
+		t.Fatalf("projects = %#v, want %#v", cfg.Projects, want)
+	}
+}
+
+func TestLoadWithoutProjectsIsBackwardCompatible(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Projects != nil {
+		t.Fatalf("projects = %#v, want nil", cfg.Projects)
+	}
+}
+
 func TestExpandPathExpandsHomeAndEnvironment(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
