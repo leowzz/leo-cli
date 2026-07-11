@@ -2,12 +2,13 @@
 
 中文 | [English](https://github.com/leowzz/leo-cli/blob/main/README.en.md)
 
-`leo-cli` 是一组个人命令行工具，构建产物是 `leo`。当前主要做四件事：
+`leo-cli` 是一组个人命令行工具，构建产物是 `leo`。当前主要做五件事：
 
 - 扫描本地 Git 仓库，并用交互式终端列表快速选择仓库。
 - 生成 shell 函数，让 `repo` 选择仓库后直接 `cd` 进去。
 - 从剪贴板、txt 或 csv 构造 SQL `IN` 列表，并复制结果。
 - 用 registry alias 简化 `skopeo copy` 的镜像搬运命令。
+- 在临时浏览器工作台中搜索和跟随项目日志。
 
 ## 安装
 
@@ -176,6 +177,45 @@ leo docker copy python:3.12-slim t --platform linux/arm64/v8
 
 `docker copy` 调用的是 [skopeo](https://github.com/containers/skopeo)，不依赖本机 Docker daemon 或 `docker context`。默认平台是 `linux/amd64`。
 
+## 日志查看器
+
+先配置项目和允许读取的日志目录：
+
+```yaml
+proj:
+  mindcraft:
+    logs:
+      - runtime/logs
+      - /docker-runtime
+```
+
+在项目根目录或任意子目录运行：
+
+```bash
+leo log
+```
+
+`leo` 会从当前目录向上查找，选择目录名包含项目 key 的最近祖先，启动临时 HTTP 服务并打印一次性 URL。相对日志目录从识别出的项目根目录解析。需要短别名时可以单独设置匹配字符串：
+
+```yaml
+proj:
+  mc:
+    match: mindcraft
+    logs:
+      - runtime/logs
+```
+
+常用覆盖参数：
+
+```bash
+leo log --project mc
+leo log --host 0.0.0.0 --port 9031
+```
+
+默认只监听 `127.0.0.1`，端口由系统自动选择。在远程服务器上，可以通过 SSH 端口转发手动打开打印出的 URL；也可以显式绑定内网地址。非 loopback 地址上的明文 HTTP 只适合可信开发网络。
+
+工作台会递归发现受支持的文本日志，以有界的按需扫描流式返回搜索结果，并在文件轮转或截断时继续跟随和显示提示。日志始终原地读取：不会复制日志内容，不会建立持久索引，也不会保存查询、token、session 或 UI 状态。按 Ctrl-C 停止服务。
+
 ## 配置
 
 默认配置文件：
@@ -214,6 +254,10 @@ time:
     - +9
     - +0
     - America/Los_Angeles
+proj:
+  mindcraft:
+    logs:
+      - runtime/logs
 ```
 
 `time.zones` 控制 `leo time` 额外打印的常用时区。支持 `+9` 这类 UTC offset，也支持 `America/Los_Angeles` 这类 IANA 时区名。
@@ -249,6 +293,7 @@ time:
 | `leo time [VALUE]` | 转换当前时间、时间戳和常见时间字符串 |
 | `leo docker list` | 打印 Docker registry alias |
 | `leo docker copy SOURCE DESTINATION` | 用 `skopeo copy` 复制镜像 |
+| `leo log` | 打开当前项目的临时日志工作台 |
 
 ## 开发
 
@@ -303,6 +348,9 @@ make release-github V=v0.1.0
 cmd/                 Cobra 命令入口
 internal/config/     YAML 配置、默认路径、路径展开
 internal/dockercopy/ Docker 镜像引用和 registry alias 解析
+internal/logview/    安全日志发现、解析、搜索和跟随
+internal/logweb/     认证 HTTP API 和内嵌浏览器工作台
+internal/project/    当前项目匹配和根目录解析
 internal/refresh/    初始索引和后台元数据刷新
 internal/repoindex/  Git 仓库扫描和元数据提取
 internal/repoui/     Bubble Tea 仓库选择器

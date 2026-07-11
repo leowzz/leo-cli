@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	Repo   RepoConfig   `yaml:"repo"`
-	Docker DockerConfig `yaml:"docker"`
-	Time   TimeConfig   `yaml:"time"`
+	Repo     RepoConfig               `yaml:"repo"`
+	Docker   DockerConfig             `yaml:"docker"`
+	Time     TimeConfig               `yaml:"time"`
+	Projects map[string]ProjectConfig `yaml:"proj"`
 }
 
 type RepoConfig struct {
@@ -25,6 +26,11 @@ type DockerConfig struct {
 
 type TimeConfig struct {
 	Zones []string `yaml:"zones"`
+}
+
+type ProjectConfig struct {
+	Match string   `yaml:"match"`
+	Logs  []string `yaml:"logs"`
 }
 
 func DefaultPath() (string, error) {

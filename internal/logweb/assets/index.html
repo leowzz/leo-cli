@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leo Log Viewer</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="workspace">
+    <header class="workspace-header">
+      <div class="brand">
+        <span class="brand-mark">LEO</span>
+        <h1>Log Viewer</h1>
+      </div>
+      <div id="connection" class="connection" aria-live="polite">
+        <span class="status-dot"></span>
+        <span>Connecting</span>
+      </div>
+    </header>
+
+    <section class="query-bar" aria-label="Search controls">
+      <div class="query-primary">
+        <label class="control compact">
+          <span>Range</span>
+          <select id="range">
+            <option value="3600">Last hour</option>
+            <option value="21600">Last 6 hours</option>
+            <option value="86400">Last 24 hours</option>
+            <option value="259200">Last 3 days</option>
+            <option value="604800">Last 7 days</option>
+          </select>
+        </label>
+        <label class="control grow">
+          <span>Include</span>
+          <input id="include" type="search" autocomplete="off" placeholder="term, phrase">
+        </label>
+        <label class="control grow">
+          <span>Exclude</span>
+          <input id="exclude" type="search" autocomplete="off" placeholder="noise, healthcheck">
+        </label>
+        <div class="query-actions">
+          <button id="search" class="button primary" type="button">Search</button>
+          <button id="cancel" class="button" type="button" disabled>Cancel</button>
+        </div>
+      </div>
+
+      <div class="query-secondary">
+        <label class="control field-filter">
+          <span>Search ID</span>
+          <input id="search-id" type="text" autocomplete="off">
+        </label>
+        <label class="control field-filter">
+          <span>User ID</span>
+          <input id="user-id" type="text" autocomplete="off">
+        </label>
+        <label class="control field-filter source-filter">
+          <span>Source</span>
+          <input id="source" type="text" autocomplete="off">
+        </label>
+        <label class="toggle"><input id="regex" type="checkbox"><span>Regex</span></label>
+        <label class="toggle"><input id="case-sensitive" type="checkbox"><span>Case sensitive</span></label>
+        <div id="scan-size" class="scan-size">0 files / 0 B</div>
+      </div>
+    </section>
+
+    <section class="content">
+      <aside class="sidebar" aria-label="Log files and levels">
+        <div class="sidebar-header">
+          <h2>Files</h2>
+          <div class="selection-actions">
+            <button id="select-all" class="text-button" type="button">All</button>
+            <span>/</span>
+            <button id="select-none" class="text-button" type="button">None</button>
+          </div>
+        </div>
+        <div id="file-tree" class="file-tree" aria-live="polite"></div>
+        <div class="level-section">
+          <h2>Levels</h2>
+          <div id="levels" class="level-grid">
+            <label class="level-toggle trace"><input type="checkbox" value="TRACE"><span>TRACE</span></label>
+            <label class="level-toggle debug"><input type="checkbox" value="DEBUG"><span>DEBUG</span></label>
+            <label class="level-toggle info"><input type="checkbox" value="INFO"><span>INFO</span></label>
+            <label class="level-toggle notice"><input type="checkbox" value="NOTICE"><span>NOTICE</span></label>
+            <label class="level-toggle warning"><input type="checkbox" value="WARNING"><span>WARNING</span></label>
+            <label class="level-toggle error"><input type="checkbox" value="ERROR"><span>ERROR</span></label>
+          </div>
+        </div>
+      </aside>
+
+      <section class="results" aria-label="Log records">
+        <div class="result-status">
+          <span id="search-status">Ready</span>
+          <span id="result-count">0 records</span>
+        </div>
+        <div id="log-scroll" class="log-scroll">
+          <table class="log-table">
+            <colgroup>
+              <col class="col-time">
+              <col class="col-level">
+              <col class="col-id">
+              <col class="col-id">
+              <col class="col-source">
+              <col class="col-message">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Level</th>
+                <th>Search ID</th>
+                <th>User ID</th>
+                <th>Source</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+          </table>
+          <div id="empty-state" class="empty-state">No records in the current view</div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="follow-bar">
+      <button id="follow" class="button follow-button" type="button">Start follow</button>
+      <span id="follow-status" class="follow-status">Follow stopped</span>
+      <span class="footer-spacer"></span>
+      <span id="discarded-count" class="footer-count" hidden></span>
+      <span id="waiting-count" class="footer-count" hidden></span>
+      <button id="jump-latest" class="button" type="button" disabled>Jump to latest</button>
+    </footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
