@@ -308,7 +308,7 @@ func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
 			`openCellActionMenu`,
 			`closeCellActionMenu`,
 			`focusout`,
-			`queueMicrotask`,
+			`setTimeout`,
 			`updateMessageDisclosure`,
 			`copyText`,
 			`window.isSecureContext`,
@@ -339,6 +339,18 @@ func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
 				t.Errorf("GET %s is missing %q", path, marker)
 			}
 		}
+	}
+}
+
+func TestWorkspaceScriptLetsPointerClickFinishBeforeFocusoutClose(t *testing.T) {
+	body, err := embeddedAssets.ReadFile("assets/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	focusoutHandler := `elements.cellActionMenu.addEventListener("focusout", () => {
+  setTimeout(() => {`
+	if !bytes.Contains(body, []byte(focusoutHandler)) {
+		t.Fatal("action menu focusout closes before a pointer click on another menu item can finish")
 	}
 }
 

@@ -753,12 +753,12 @@ elements.cellActionMenu.addEventListener("keydown", (event) => {
 });
 
 elements.cellActionMenu.addEventListener("focusout", () => {
-  queueMicrotask(() => {
+  setTimeout(() => {
     const trigger = state.actionMenuTrigger;
     if (!trigger) return;
     if (elements.cellActionMenu.contains(document.activeElement) || trigger.contains(document.activeElement)) return;
     closeCellActionMenu();
-  });
+  }, 0);
 });
 
 document.addEventListener("pointerdown", (event) => {
