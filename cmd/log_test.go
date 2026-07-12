@@ -175,6 +175,50 @@ func TestPrepareLogRuntimeKeepsExplicitProjectStrict(t *testing.T) {
 	}
 }
 
+func TestPrepareLogRuntimeRejectsEmptyConfiguredCatalog(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "demo_01-service")
+	logs := filepath.Join(root, "logs")
+	if err := os.MkdirAll(logs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{Projects: map[string]config.ProjectConfig{
+		"demo_01": {Logs: []string{"logs"}},
+	}}
+
+	_, _, err := prepareLogRuntime(cfg, root, "", nil)
+	if err == nil {
+		t.Fatal("prepareLogRuntime() error = nil")
+	}
+	for _, want := range []string{"demo_01", root, "logs", "no eligible log files"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error missing %q:\n%s", want, err)
+		}
+	}
+}
+
+func TestPrepareLogRuntimeExplainsUnusableConfiguredRoots(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "demo_01-service")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{Projects: map[string]config.ProjectConfig{
+		"demo_01": {Logs: []string{"missing"}},
+	}}
+
+	_, warnings, err := prepareLogRuntime(cfg, root, "demo_01", nil)
+	if err == nil {
+		t.Fatal("prepareLogRuntime() error = nil")
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "missing") {
+		t.Fatalf("warnings = %v", warnings)
+	}
+	for _, want := range []string{"demo_01", root, "missing", "no usable log directories", "warnings:"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error missing %q:\n%s", want, err)
+		}
+	}
+}
+
 func TestPrepareLogRuntimeExplainsMissingAutomaticLogs(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "empty-service")
 	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {

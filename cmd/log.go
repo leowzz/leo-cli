@@ -72,7 +72,7 @@ func prepareLogRuntime(cfg config.Config, cwd, requestedProject string, explicit
 		if err != nil {
 			return logRuntime{}, nil, err
 		}
-		return buildLogRuntime(selection, false, nil)
+		return prepareConfiguredLogRuntime(selection)
 	}
 	if len(explicitLogRoots) > 0 {
 		return prepareAdHocLogRuntime(cwd, explicitLogRoots)
@@ -80,7 +80,7 @@ func prepareLogRuntime(cfg config.Config, cwd, requestedProject string, explicit
 
 	selection, err := project.Resolve(cwd, "", cfg.Projects)
 	if err == nil {
-		return buildLogRuntime(selection, false, nil)
+		return prepareConfiguredLogRuntime(selection)
 	}
 	if !errors.Is(err, project.ErrNoMatch) {
 		return logRuntime{}, nil, err
@@ -88,11 +88,22 @@ func prepareLogRuntime(cfg config.Config, cwd, requestedProject string, explicit
 	return prepareAdHocLogRuntime(cwd, nil)
 }
 
+func prepareConfiguredLogRuntime(selection project.Selection) (logRuntime, []string, error) {
+	runtime, warnings, err := buildLogRuntime(selection, false, nil)
+	if err != nil {
+		return logRuntime{}, warnings, configuredLogRuntimeError(selection, warnings, err)
+	}
+	return runtime, warnings, nil
+}
+
 func buildLogRuntime(selection project.Selection, automatic bool, initialWarnings []string) (logRuntime, []string, error) {
 	catalog, warnings, err := logview.BuildCatalog(selection.Root, selection.Config.Logs)
 	warnings = append(append([]string(nil), initialWarnings...), warnings...)
 	if err != nil {
 		return logRuntime{}, warnings, err
+	}
+	if len(catalog.Files()) == 0 {
+		return logRuntime{}, warnings, errors.New("no eligible log files")
 	}
 	return logRuntime{project: selection, catalog: catalog, automatic: automatic}, warnings, nil
 }
@@ -124,13 +135,30 @@ func prepareAdHocLogRuntime(cwd string, explicitLogRoots []string) (logRuntime, 
 		Config: config.ProjectConfig{Logs: roots},
 	}
 	runtime, catalogWarnings, err := buildLogRuntime(selection, true, warnings)
-	if err != nil || len(runtime.catalog.Files()) == 0 {
+	if err != nil {
 		if len(explicitLogRoots) > 0 {
 			return logRuntime{}, catalogWarnings, explicitLogRootsError(explicitLogRoots, catalogWarnings)
 		}
 		return logRuntime{}, catalogWarnings, autoLogDiscoveryError(root, catalogWarnings)
 	}
 	return runtime, catalogWarnings, nil
+}
+
+func configuredLogRuntimeError(selection project.Selection, warnings []string, cause error) error {
+	roots := "(none)"
+	if len(selection.Config.Logs) > 0 {
+		roots = strings.Join(selection.Config.Logs, ", ")
+	}
+	return fmt.Errorf(
+		"no log files found for configured project %q at %s\n"+
+			"configured log directories: %s\n"+
+			"cause: %w%s",
+		selection.Name,
+		selection.Root,
+		roots,
+		cause,
+		formatLogWarnings(warnings),
+	)
 }
 
 func autoLogDiscoveryError(root string, warnings []string) error {

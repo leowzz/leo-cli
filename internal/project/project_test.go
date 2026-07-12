@@ -98,9 +98,14 @@ func TestResolveRequiresMatch(t *testing.T) {
 }
 
 func TestResolveReturnsTypedNoMatch(t *testing.T) {
-	_, err := Resolve(t.TempDir(), "", map[string]config.ProjectConfig{"other": {}})
+	cwd := t.TempDir()
+	_, err := Resolve(cwd, "", map[string]config.ProjectConfig{"other": {}})
 	if !errors.Is(err, ErrNoMatch) {
 		t.Fatalf("Resolve() error = %v, want ErrNoMatch", err)
+	}
+	want := "no configured project matches \"" + cwd + "\"; configured projects: other; use --project"
+	if err.Error() != want {
+		t.Fatalf("Resolve() error = %q, want %q", err, want)
 	}
 }
 

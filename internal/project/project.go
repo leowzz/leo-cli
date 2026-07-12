@@ -13,6 +13,18 @@ import (
 
 var ErrNoMatch = errors.New("no configured project match")
 
+type noMatchError struct {
+	message string
+}
+
+func (e noMatchError) Error() string {
+	return e.message
+}
+
+func (e noMatchError) Unwrap() error {
+	return ErrNoMatch
+}
+
 type Selection struct {
 	Name   string
 	Root   string
@@ -58,7 +70,11 @@ func Resolve(cwd, requested string, projects map[string]config.ProjectConfig) (S
 		}
 	}
 
-	return Selection{}, fmt.Errorf("%w: no configured project matches %q; configured projects: %s; use --project", ErrNoMatch, cleanCWD, projectNames(projects))
+	return Selection{}, noMatchError{message: fmt.Sprintf(
+		"no configured project matches %q; configured projects: %s; use --project",
+		cleanCWD,
+		projectNames(projects),
+	)}
 }
 
 func FindRoot(cwd string) (string, error) {

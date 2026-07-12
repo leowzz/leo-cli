@@ -219,4 +219,3 @@ Automated tests cover:
 Integration verification runs `leo log` in an isolated unconfigured Git
 project, opens the bootstrap URL, lists discovered files, performs a search,
 starts Follow, appends a record, and shuts the server down cleanly.
-
