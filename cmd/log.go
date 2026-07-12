@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 
 var (
 	logProject string
+	logRoots   []string
 	logHost    string
 	logPort    int
 )
@@ -41,36 +44,124 @@ var logCmd = &cobra.Command{
 		}
 		ctx, stop := signal.NotifyContext(commandContext(cmd), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		return runLogServer(ctx, cfg, cwd, logProject, logHost, logPort, cmd.OutOrStdout())
+		return runLogServer(ctx, cfg, cwd, logProject, logRoots, logHost, logPort, cmd.OutOrStdout())
 	},
 }
 
 type logRuntime struct {
-	project project.Selection
-	catalog *logview.Catalog
+	project   project.Selection
+	catalog   *logview.Catalog
+	automatic bool
 }
 
 func init() {
 	logCmd.Flags().StringVar(&logProject, "project", "", "Configured project name")
+	logCmd.Flags().StringArrayVar(&logRoots, "logs", nil, "Log directory (repeat for multiple roots)")
 	logCmd.Flags().StringVar(&logHost, "host", "127.0.0.1", "HTTP listen host")
 	logCmd.Flags().IntVar(&logPort, "port", 0, "HTTP listen port (0 chooses an available port)")
+	logCmd.MarkFlagsMutuallyExclusive("project", "logs")
 	rootCmd.AddCommand(logCmd)
 }
 
-func prepareLogRuntime(cfg config.Config, cwd, requestedProject string) (logRuntime, []string, error) {
-	selection, err := project.Resolve(cwd, requestedProject, cfg.Projects)
-	if err != nil {
+func prepareLogRuntime(cfg config.Config, cwd, requestedProject string, explicitLogRoots []string) (logRuntime, []string, error) {
+	if requestedProject != "" && len(explicitLogRoots) > 0 {
+		return logRuntime{}, nil, errors.New("--project and --logs cannot be used together")
+	}
+	if requestedProject != "" {
+		selection, err := project.Resolve(cwd, requestedProject, cfg.Projects)
+		if err != nil {
+			return logRuntime{}, nil, err
+		}
+		return buildLogRuntime(selection, false, nil)
+	}
+	if len(explicitLogRoots) > 0 {
+		return prepareAdHocLogRuntime(cwd, explicitLogRoots)
+	}
+
+	selection, err := project.Resolve(cwd, "", cfg.Projects)
+	if err == nil {
+		return buildLogRuntime(selection, false, nil)
+	}
+	if !errors.Is(err, project.ErrNoMatch) {
 		return logRuntime{}, nil, err
 	}
+	return prepareAdHocLogRuntime(cwd, nil)
+}
+
+func buildLogRuntime(selection project.Selection, automatic bool, initialWarnings []string) (logRuntime, []string, error) {
 	catalog, warnings, err := logview.BuildCatalog(selection.Root, selection.Config.Logs)
+	warnings = append(append([]string(nil), initialWarnings...), warnings...)
 	if err != nil {
 		return logRuntime{}, warnings, err
 	}
-	return logRuntime{project: selection, catalog: catalog}, warnings, nil
+	return logRuntime{project: selection, catalog: catalog, automatic: automatic}, warnings, nil
 }
 
-func runLogServer(ctx context.Context, cfg config.Config, cwd, requestedProject, host string, port int, stdout io.Writer) error {
-	runtime, warnings, err := prepareLogRuntime(cfg, cwd, requestedProject)
+func prepareAdHocLogRuntime(cwd string, explicitLogRoots []string) (logRuntime, []string, error) {
+	root, err := project.FindRoot(cwd)
+	if err != nil {
+		return logRuntime{}, nil, err
+	}
+	var roots []string
+	var warnings []string
+	if len(explicitLogRoots) > 0 {
+		roots, err = expandExplicitLogRoots(cwd, explicitLogRoots)
+		if err != nil {
+			return logRuntime{}, nil, err
+		}
+	} else {
+		roots, warnings = discoverLogRoots(root)
+	}
+	if len(roots) == 0 {
+		if len(explicitLogRoots) > 0 {
+			return logRuntime{}, warnings, explicitLogRootsError(explicitLogRoots, warnings)
+		}
+		return logRuntime{}, warnings, autoLogDiscoveryError(root, warnings)
+	}
+	selection := project.Selection{
+		Name:   filepath.Base(root),
+		Root:   root,
+		Config: config.ProjectConfig{Logs: roots},
+	}
+	runtime, catalogWarnings, err := buildLogRuntime(selection, true, warnings)
+	if err != nil || len(runtime.catalog.Files()) == 0 {
+		if len(explicitLogRoots) > 0 {
+			return logRuntime{}, catalogWarnings, explicitLogRootsError(explicitLogRoots, catalogWarnings)
+		}
+		return logRuntime{}, catalogWarnings, autoLogDiscoveryError(root, catalogWarnings)
+	}
+	return runtime, catalogWarnings, nil
+}
+
+func autoLogDiscoveryError(root string, warnings []string) error {
+	return fmt.Errorf(
+		"no log files found for %s\n"+
+			"tried common log directories and log/logs folders up to depth 4\n"+
+			"run: leo log --logs ./path/to/logs\n"+
+			"or add:\n  proj:\n    %s:\n      logs:\n        - runtime/logs%s",
+		root,
+		filepath.Base(root),
+		formatLogWarnings(warnings),
+	)
+}
+
+func explicitLogRootsError(roots, warnings []string) error {
+	return fmt.Errorf(
+		"no log files found for --logs %s; correct the supplied log directories%s",
+		strings.Join(roots, ", "),
+		formatLogWarnings(warnings),
+	)
+}
+
+func formatLogWarnings(warnings []string) string {
+	if len(warnings) == 0 {
+		return ""
+	}
+	return "\nwarnings:\n  " + strings.Join(warnings, "\n  ")
+}
+
+func runLogServer(ctx context.Context, cfg config.Config, cwd, requestedProject string, explicitLogRoots []string, host string, port int, stdout io.Writer) error {
+	runtime, warnings, err := prepareLogRuntime(cfg, cwd, requestedProject, explicitLogRoots)
 	if err != nil {
 		return err
 	}
@@ -142,7 +233,11 @@ func advertisedLogHost(bindHost string, hostname func() (string, error)) (string
 }
 
 func printLogStartup(stdout io.Writer, runtime logRuntime, warnings []string, bootstrapURL string) {
-	fmt.Fprintf(stdout, "Project: %s\n", runtime.project.Name)
+	name := runtime.project.Name
+	if runtime.automatic {
+		name += " (auto)"
+	}
+	fmt.Fprintf(stdout, "Project: %s\n", name)
 	fmt.Fprintf(stdout, "Root: %s\n", runtime.project.Root)
 	fmt.Fprintln(stdout, "Logs:")
 	for _, root := range runtime.catalog.Roots() {

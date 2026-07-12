@@ -179,7 +179,26 @@ leo docker copy python:3.12-slim t --platform linux/arm64/v8
 
 ## Log Viewer
 
-Configure each project and its allowed log directories:
+From a project root or any child directory, run:
+
+```bash
+leo log
+```
+
+No project configuration is required. `leo` uses the nearest Git root (or the
+current directory outside Git), checks common paths such as `runtime/logs`,
+`logs`, `log`, `var/log`, and `storage/logs`, then performs a bounded search for
+directories named `log` or `logs` when those paths are absent.
+
+Use one or more explicit directories when logs live elsewhere:
+
+```bash
+leo log --logs ./custom/logs
+leo log --logs ./api/logs --logs ./worker/logs
+```
+
+Relative `--logs` paths are resolved from the directory where the command is
+run. For persistent project aliases or custom roots, add configuration:
 
 ```yaml
 proj:
@@ -189,13 +208,10 @@ proj:
       - /docker-runtime
 ```
 
-From the project root or any child directory, run:
-
-```bash
-leo log
-```
-
-`leo` walks upward from the current directory, finds the nearest ancestor whose name contains the project key, starts a temporary HTTP server, and prints a one-time URL. Relative log directories are resolved from that detected project root. An alias can use a different match string:
+Configured projects take priority when the current directory matches. `leo`
+walks upward, finds the nearest ancestor whose name contains the project key,
+and resolves relative log directories from that root. An alias can use a
+different match string:
 
 ```yaml
 proj:
@@ -211,6 +227,8 @@ Useful overrides:
 leo log --project mc
 leo log --host 0.0.0.0 --port 9031
 ```
+
+An explicit `--project` is strict and cannot be combined with `--logs`.
 
 The default listener is `127.0.0.1` on an automatically selected port. On a remote server, open the printed URL manually through SSH port forwarding, or explicitly bind to an internal-network address. Plain HTTP on a non-loopback address is only appropriate on a trusted development network.
 
