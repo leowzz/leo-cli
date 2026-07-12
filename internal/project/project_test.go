@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,6 +94,70 @@ func TestResolveRequiresMatch(t *testing.T) {
 	_, err := Resolve(cwd, "", projects)
 	if err == nil || !strings.Contains(err.Error(), "demo_01") || !strings.Contains(err.Error(), "--project") {
 		t.Fatalf("Resolve() error = %v, want configured projects and --project hint", err)
+	}
+}
+
+func TestResolveReturnsTypedNoMatch(t *testing.T) {
+	_, err := Resolve(t.TempDir(), "", map[string]config.ProjectConfig{"other": {}})
+	if !errors.Is(err, ErrNoMatch) {
+		t.Fatalf("Resolve() error = %v, want ErrNoMatch", err)
+	}
+}
+
+func TestResolveDoesNotTypeExplicitOrAmbiguousErrorsAsNoMatch(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "shared")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	projects := map[string]config.ProjectConfig{
+		"one": {Match: "shared"},
+		"two": {Match: "shared"},
+	}
+	if _, err := Resolve(root, "", projects); err == nil || errors.Is(err, ErrNoMatch) {
+		t.Fatalf("ambiguous Resolve() error = %v, want non-ErrNoMatch", err)
+	}
+	if _, err := Resolve(root, "missing", projects); err == nil || errors.Is(err, ErrNoMatch) {
+		t.Fatalf("explicit Resolve() error = %v, want non-ErrNoMatch", err)
+	}
+}
+
+func TestFindRootUsesNearestGitDirectory(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "service", "pkg")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindRoot(nested)
+	if err != nil || got != root {
+		t.Fatalf("FindRoot() = %q, %v, want %q", got, err, root)
+	}
+}
+
+func TestFindRootUsesNearestGitFile(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "worktree", "pkg")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("gitdir: ../repo/.git/worktrees/demo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindRoot(nested)
+	if err != nil || got != root {
+		t.Fatalf("FindRoot() = %q, %v, want %q", got, err, root)
+	}
+}
+
+func TestFindRootFallsBackToCurrentDirectory(t *testing.T) {
+	cwd := t.TempDir()
+	got, err := FindRoot(cwd)
+	if err != nil || got != cwd {
+		t.Fatalf("FindRoot() = %q, %v, want %q", got, err, cwd)
 	}
 }
 

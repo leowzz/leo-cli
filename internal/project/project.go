@@ -1,13 +1,17 @@
 package project
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/leo/leo-cli/internal/config"
 )
+
+var ErrNoMatch = errors.New("no configured project match")
 
 type Selection struct {
 	Name   string
@@ -54,7 +58,29 @@ func Resolve(cwd, requested string, projects map[string]config.ProjectConfig) (S
 		}
 	}
 
-	return Selection{}, fmt.Errorf("no configured project matches %q; configured projects: %s; use --project", cleanCWD, projectNames(projects))
+	return Selection{}, fmt.Errorf("%w: no configured project matches %q; configured projects: %s; use --project", ErrNoMatch, cleanCWD, projectNames(projects))
+}
+
+func FindRoot(cwd string) (string, error) {
+	current, err := filepath.Abs(cwd)
+	if err != nil {
+		return "", fmt.Errorf("resolve project root: %w", err)
+	}
+	current = filepath.Clean(current)
+	for dir := current; ; {
+		info, statErr := os.Lstat(filepath.Join(dir, ".git"))
+		if statErr == nil && (info.IsDir() || info.Mode().IsRegular()) {
+			return dir, nil
+		}
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			return "", fmt.Errorf("inspect Git root %q: %w", dir, statErr)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return current, nil
+		}
+		dir = parent
+	}
 }
 
 func matchingAncestor(cwd, match string) (string, bool) {
