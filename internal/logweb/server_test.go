@@ -260,7 +260,7 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 		`id="cancel"`,
 		`id="clear"`,
 		`id="show-unparsed"`,
-		`type="checkbox" checked`,
+		`<input id="show-unparsed" type="checkbox">`,
 		`id="log-body"`,
 		`id="follow"`,
 		`id="jump-latest"`,
