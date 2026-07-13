@@ -283,7 +283,8 @@ func validStreamOrigin(request *http.Request) bool {
 	if request.Header.Get("Origin") != "" {
 		return sameOrigin(request)
 	}
-	return request.Header.Get("Sec-Fetch-Site") == "same-origin"
+	secFetchSite := request.Header.Get("Sec-Fetch-Site")
+	return secFetchSite == "" || secFetchSite == "same-origin"
 }
 
 func ensureJSONEnd(decoder *json.Decoder) error {

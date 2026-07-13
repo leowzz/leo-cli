@@ -222,7 +222,6 @@ func TestFollowStreamsSSE(t *testing.T) {
 	defer cancel()
 	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, httpServer.URL+"/api/follow?files="+fileID, nil)
 	request.AddCookie(cookie)
-	request.Header.Set("Sec-Fetch-Site", "same-origin")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -240,13 +239,14 @@ func TestFollowStreamsSSE(t *testing.T) {
 	}
 }
 
-func TestFollowRejectsRequestWithoutOriginSignals(t *testing.T) {
+func TestFollowRejectsCrossOriginRequest(t *testing.T) {
 	server := newTestServer(t, nil)
 	httpServer := httptest.NewServer(server)
 	defer httpServer.Close()
 	cookie := bootstrapCookie(t, server, httpServer.URL)
 	request, _ := http.NewRequest(http.MethodGet, httpServer.URL+"/api/follow", nil)
 	request.AddCookie(cookie)
+	request.Header.Set("Origin", "https://evil.example")
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
