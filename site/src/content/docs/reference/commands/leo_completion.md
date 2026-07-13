@@ -29,9 +29,9 @@ See each sub-command's help for details on how to use the generated script.
 
 ### SEE ALSO
 
-* [leo](./leo.md)	 - Personal command-line tools
-* [leo completion bash](./leo_completion_bash.md)	 - Generate the autocompletion script for bash
-* [leo completion fish](./leo_completion_fish.md)	 - Generate the autocompletion script for fish
-* [leo completion powershell](./leo_completion_powershell.md)	 - Generate the autocompletion script for powershell
-* [leo completion zsh](./leo_completion_zsh.md)	 - Generate the autocompletion script for zsh
+* [leo](../leo/)	 - Personal command-line tools
+* [leo completion bash](../leo_completion_bash/)	 - Generate the autocompletion script for bash
+* [leo completion fish](../leo_completion_fish/)	 - Generate the autocompletion script for fish
+* [leo completion powershell](../leo_completion_powershell/)	 - Generate the autocompletion script for powershell
+* [leo completion zsh](../leo_completion_zsh/)	 - Generate the autocompletion script for zsh
 

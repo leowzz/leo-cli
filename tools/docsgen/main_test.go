@@ -36,4 +36,21 @@ func TestGenerateWritesBothLocalesWithoutDates(t *testing.T) {
 			t.Fatalf("%s contains a generated date", path)
 		}
 	}
+
+	for _, path := range []string{
+		filepath.Join(docsRoot, "reference", "commands", "leo.md"),
+		filepath.Join(docsRoot, "en", "reference", "commands", "leo.md"),
+	} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		if !strings.Contains(text, "../leo_child/") {
+			t.Fatalf("%s does not contain directory-style child link", path)
+		}
+		if strings.Contains(text, "./leo_child.md") {
+			t.Fatalf("%s contains legacy file link", path)
+		}
+	}
 }

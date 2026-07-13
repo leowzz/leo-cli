@@ -27,5 +27,5 @@ leo join [FILE] [flags]
 
 ### SEE ALSO
 
-* [leo](./leo.md)	 - Personal command-line tools
+* [leo](../leo/)	 - Personal command-line tools
 

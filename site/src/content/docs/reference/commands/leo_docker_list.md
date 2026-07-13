@@ -27,5 +27,5 @@ leo docker list [flags]
 
 ### SEE ALSO
 
-* [leo docker](./leo_docker.md)	 - Docker registry helpers
+* [leo docker](../leo_docker/)	 - Docker registry helpers
 

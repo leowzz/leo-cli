@@ -27,5 +27,5 @@ leo repo reindex [flags]
 
 ### SEE ALSO
 
-* [leo repo](./leo_repo.md)	 - Browse indexed repositories
+* [leo repo](../leo_repo/)	 - Browse indexed repositories
 

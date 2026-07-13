@@ -27,5 +27,5 @@ leo shell init SHELL [flags]
 
 ### SEE ALSO
 
-* [leo shell](./leo_shell.md)	 - Shell integration helpers
+* [leo shell](../leo_shell/)	 - Shell integration helpers
 

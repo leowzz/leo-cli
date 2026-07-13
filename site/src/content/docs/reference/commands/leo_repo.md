@@ -27,6 +27,6 @@ leo repo [flags]
 
 ### SEE ALSO
 
-* [leo](./leo.md)	 - Personal command-line tools
-* [leo repo reindex](./leo_repo_reindex.md)	 - Update the local repository index
+* [leo](../leo/)	 - Personal command-line tools
+* [leo repo reindex](../leo_repo_reindex/)	 - Update the local repository index
 

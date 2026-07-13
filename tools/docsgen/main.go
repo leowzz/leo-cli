@@ -55,7 +55,10 @@ func generate(root *cobra.Command, contentRoot string) error {
 			title := strings.ReplaceAll(base, "_", " ")
 			return fmt.Sprintf("---\ntitle: %q\ndescription: %q\n---\n\n%s\n\n", title, locale.description, locale.note)
 		}
-		link := func(name string) string { return "./" + name }
+		link := func(name string) string {
+			stem := strings.TrimSuffix(name, filepath.Ext(name))
+			return "../" + filepath.ToSlash(stem) + "/"
+		}
 		if err := doc.GenMarkdownTreeCustom(root, outputDir, prepend, link); err != nil {
 			return err
 		}

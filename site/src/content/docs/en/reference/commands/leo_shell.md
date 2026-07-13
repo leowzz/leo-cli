@@ -23,6 +23,6 @@ Shell integration helpers
 
 ### SEE ALSO
 
-* [leo](./leo.md)	 - Personal command-line tools
-* [leo shell init](./leo_shell_init.md)	 - Print shell integration script
+* [leo](../leo/)	 - Personal command-line tools
+* [leo shell init](../leo_shell_init/)	 - Print shell integration script
 

@@ -23,7 +23,7 @@ Docker registry helpers
 
 ### SEE ALSO
 
-* [leo](./leo.md)	 - Personal command-line tools
-* [leo docker copy](./leo_docker_copy.md)	 - Copy a Docker image between configured registries
-* [leo docker list](./leo_docker_list.md)	 - List configured Docker registry aliases
+* [leo](../leo/)	 - Personal command-line tools
+* [leo docker copy](../leo_docker_copy/)	 - Copy a Docker image between configured registries
+* [leo docker list](../leo_docker_list/)	 - List configured Docker registry aliases
 

@@ -52,5 +52,5 @@ leo completion bash
 
 ### SEE ALSO
 
-* [leo completion](./leo_completion.md)	 - Generate the autocompletion script for the specified shell
+* [leo completion](../leo_completion/)	 - Generate the autocompletion script for the specified shell
 
