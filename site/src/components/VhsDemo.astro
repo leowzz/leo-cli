@@ -1,0 +1,31 @@
+---
+interface Props {
+  src: string;
+  poster: string;
+  caption: string;
+  tapeHref: string;
+  downloadLabel: string;
+  sourceLabel: string;
+}
+
+const { src, poster, caption, tapeHref, downloadLabel, sourceLabel } = Astro.props;
+const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+---
+
+<figure class="vhs-demo">
+  <video controls muted playsinline preload="metadata" poster={assetUrl(poster)} aria-label={caption}>
+    <source src={assetUrl(src)} type="video/webm" />
+    <a href={assetUrl(src)}>{downloadLabel}</a>
+  </video>
+  <figcaption>
+    <span>{caption}</span>
+    <a href={tapeHref}>{sourceLabel}</a>
+  </figcaption>
+</figure>
+
+<style>
+  .vhs-demo { margin: 1.5rem 0; }
+  video { display: block; width: 100%; aspect-ratio: 5 / 3; background: #161616; border: 1px solid var(--sl-color-gray-5); }
+  figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; margin-top: .5rem; color: var(--sl-color-gray-2); font-size: var(--sl-text-sm); }
+  a { white-space: nowrap; }
+</style>

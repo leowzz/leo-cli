@@ -3,6 +3,8 @@ title: leo-cli
 description: Command-line tools for personal development workflows.
 ---
 
+import VhsDemo from '../../../components/VhsDemo.astro';
+
 `leo-cli` is a set of command-line tools for personal development workflows,
 covering repository navigation, SQL IN construction, time conversion, image
 copying, and local log inspection.
@@ -20,6 +22,15 @@ leo repo reindex
 leo repo
 eval "$(leo shell init zsh)"
 ```
+
+<VhsDemo
+  src="demos/repo-picker.webm"
+  poster="demos/repo-picker.png"
+  caption="Type a query and select a repository."
+  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/repo-picker.tape"
+  downloadLabel="Download demo video"
+  sourceLabel="View VHS source"
+/>
 
 Read [Getting Started](./getting-started/) for installation and shell integration,
 follow the task-focused [Guides](./guides/repositories/), or browse the

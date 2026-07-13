@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm check:locales && astro build",
+    "build": "pnpm check:locales && node scripts/check-demos.mjs && astro build",
     "preview": "astro preview",
     "test": "node --test scripts/*.test.mjs",
     "check:locales": "node scripts/check-locales.mjs"

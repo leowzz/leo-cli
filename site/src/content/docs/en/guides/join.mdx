@@ -3,6 +3,8 @@ title: Build SQL IN Values
 description: Select values from the clipboard, standard input, or a file and copy a SQL IN list.
 ---
 
+import VhsDemo from '../../../../components/VhsDemo.astro';
+
 ## Select Input
 
 When a file is supplied, `leo join` reads that `.txt` or `.csv` file:
@@ -11,6 +13,15 @@ When a file is supplied, `leo join` reads that `.txt` or `.csv` file:
 leo join ids.txt
 leo join ids.csv
 ```
+
+<VhsDemo
+  src="demos/join.webm"
+  poster="demos/join.png"
+  caption="Choose a CSV field and output format, then toggle unique values."
+  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/join.tape"
+  downloadLabel="Download demo video"
+  sourceLabel="View VHS source"
+/>
 
 Without a file, piped stdin takes priority over the clipboard:
 
