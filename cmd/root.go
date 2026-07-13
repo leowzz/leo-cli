@@ -32,6 +32,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&showVersion, "version", "v", false, "Print version")
 }
 
+func RootCommand() *cobra.Command {
+	return rootCmd
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
