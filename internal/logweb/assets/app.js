@@ -1,6 +1,6 @@
 "use strict";
 
-const MAX_ROWS = 1500;
+const MAX_ROWS = 500;
 const state = {
   files: [],
   selected: new Set(),
@@ -11,7 +11,7 @@ const state = {
   discarded: 0,
   records: 0,
   seen: new Set(),
-  rangeSeconds: 3600,
+  rangeSeconds: 300,
   clearedAt: null,
   arrivalSequence: 0,
   actionMenuTrigger: null,
@@ -441,7 +441,7 @@ function appendRecord(record, live) {
   messageCell.append(messageRow);
   row.append(messageCell);
   insertNewestRow(row, live);
-  updateMessageDisclosure(messageRow);
+  scheduleMessageDisclosureUpdate();
   state.records++;
   updateRecordCount();
   elements.emptyState.hidden = true;
@@ -534,23 +534,17 @@ function insertNewestRow(row, live) {
   const wasAtTop = state.autoScroll;
   row.dataset.live = live ? "true" : "false";
   if (live) elements.logBody.prepend(row);
-  else insertHistoricalRow(row);
-  const insertedHeight = row.getBoundingClientRect().height;
+  else elements.logBody.append(row);
   enforceRowLimit();
   if (!live) return;
   if (wasAtTop) {
     scrollLatest();
     return;
   }
+  const insertedHeight = row.getBoundingClientRect().height;
   elements.logScroll.scrollTop += insertedHeight;
   state.waiting++;
   updateFollowCounters();
-}
-
-function insertHistoricalRow(row) {
-  let insertionPoint = elements.logBody.firstElementChild;
-  while (insertionPoint?.dataset.live === "true") insertionPoint = insertionPoint.nextElementSibling;
-  elements.logBody.insertBefore(row, insertionPoint);
 }
 
 function sortTimestampedRows() {

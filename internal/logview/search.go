@@ -1,13 +1,15 @@
 package logview
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +46,10 @@ type Event struct {
 	Reason   string    `json:"reason,omitempty"`
 }
 
+var errSearchStartReached = errors.New("search start reached")
+
+const maxReverseGroupRecords = 500
+
 type Searcher struct {
 	Catalog      *Catalog
 	Workers      int
@@ -54,8 +60,8 @@ type Searcher struct {
 
 func NewSearcher(catalog *Catalog) *Searcher {
 	workers := runtime.GOMAXPROCS(0)
-	if workers > 4 {
-		workers = 4
+	if workers > 2 {
+		workers = 2
 	}
 	if workers < 1 {
 		workers = 1
@@ -63,7 +69,7 @@ func NewSearcher(catalog *Catalog) *Searcher {
 	return &Searcher{
 		Catalog:      catalog,
 		Workers:      workers,
-		MaxResults:   10_000,
+		MaxResults:   500,
 		MaxDuration:  30 * time.Second,
 		MaxLineBytes: 256 * 1024,
 	}
@@ -117,6 +123,9 @@ func (s *Searcher) Search(ctx context.Context, query Query, emit func(Event) err
 			return err
 		}
 	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return candidates[i].ModTime.After(candidates[j].ModTime)
+	})
 
 	progress := Progress{CandidateFiles: len(candidates), TotalBytes: totalBytes}
 	if err := emit(Event{Type: "progress", Progress: cloneProgress(progress)}); err != nil {
@@ -139,7 +148,7 @@ func (s *Searcher) Search(ctx context.Context, query Query, emit func(Event) err
 	}
 	maxResults := s.MaxResults
 	if maxResults < 1 {
-		maxResults = 10_000
+		maxResults = 500
 	}
 
 	type scanOutput struct {
@@ -347,64 +356,136 @@ func scanSearchFile(ctx context.Context, catalog *Catalog, file File, maxLineByt
 	}
 	defer handle.Close()
 
-	reader := bufio.NewReaderSize(handle, 64*1024)
-	var offset int64
-	var lastTimestamp *time.Time
-	for {
-		if err := ctx.Err(); err != nil {
-			return offset, err
+	group := make([]Record, 0)
+	flush := func(anchored bool) error {
+		cutoff := false
+		if anchored {
+			anchor := group[len(group)-1].Timestamp
+			cutoff = !matcher.query.Start.IsZero() && anchor.Before(matcher.query.Start)
+			for left, right := 0, len(group)-1; left < right; left, right = left+1, right-1 {
+				group[left], group[right] = group[right], group[left]
+			}
+			var lastTimestamp *time.Time
+			for i := range group {
+				if group[i].Timestamp != nil {
+					timestamp := *group[i].Timestamp
+					lastTimestamp = &timestamp
+				} else if !group[i].Parsed && lastTimestamp != nil {
+					timestamp := *lastTimestamp
+					group[i].Timestamp = &timestamp
+				}
+			}
 		}
-		lineOffset := offset
-		line := make([]byte, 0, min(maxLineBytes, 64*1024))
-		truncated := false
-		for {
-			fragment, readErr := reader.ReadSlice('\n')
-			offset += int64(len(fragment))
-			remaining := maxLineBytes - len(line)
-			if remaining > 0 {
-				if len(fragment) > remaining {
-					line = append(line, fragment[:remaining]...)
-					truncated = true
-				} else {
-					line = append(line, fragment...)
+		for _, record := range group {
+			if matcher.matches(record) {
+				if err := emit(record); err != nil {
+					return err
 				}
-			} else if len(fragment) > 0 {
-				truncated = true
 			}
+		}
+		group = group[:0]
+		if cutoff {
+			return errSearchStartReached
+		}
+		return nil
+	}
 
-			if readErr == nil || errors.Is(readErr, io.EOF) {
-				lineText := strings.TrimSuffix(string(line), "\n")
-				lineText = strings.TrimSuffix(lineText, "\r")
-				if len(line) > 0 || len(fragment) > 0 {
-					record := ParseLine(file.ID, file.RelativePath, lineOffset, []byte(lineText))
-					record.Truncated = truncated
-					if record.Timestamp != nil {
-						timestamp := *record.Timestamp
-						lastTimestamp = &timestamp
-					} else if !record.Parsed && lastTimestamp != nil {
-						timestamp := *lastTimestamp
-						record.Timestamp = &timestamp
-					}
-					if matcher.matches(record) {
-						if err := emit(record); err != nil {
-							return offset, err
-						}
-					}
+	bytesRead, err := scanReverseLines(ctx, handle, file.Size, maxLineBytes, 64*1024, func(line reverseLine) error {
+		record := ParseLine(file.ID, file.RelativePath, line.offset, line.data)
+		record.Truncated = line.truncated
+		if record.Timestamp != nil {
+			group = append(group, record)
+			return flush(true)
+		}
+		// ponytail: buffer only visible match candidates; add spillable groups if more than 500 matching stack lines matter.
+		if len(group) < maxReverseGroupRecords && matcher.matches(record) {
+			group = append(group, record)
+		}
+		return nil
+	})
+	if errors.Is(err, errSearchStartReached) {
+		return bytesRead, nil
+	}
+	if err != nil {
+		return bytesRead, err
+	}
+	if err := flush(false); err != nil {
+		return bytesRead, err
+	}
+	return bytesRead, nil
+}
+
+type reverseLine struct {
+	offset    int64
+	data      []byte
+	truncated bool
+}
+
+func scanReverseLines(ctx context.Context, file *os.File, size int64, maxLineBytes, blockBytes int, emit func(reverseLine) error) (int64, error) {
+	buffer := make([]byte, blockBytes)
+	position := size
+	lineEnd := size
+	var bytesRead int64
+	var firstBlock []byte
+	emitLine := func(start, end, blockStart int64, block []byte) error {
+		length := end - start
+		kept := min(length, int64(maxLineBytes))
+		line := make([]byte, int(kept))
+		if kept > 0 {
+			blockEnd := blockStart + int64(len(block))
+			if start >= blockStart && start+kept <= blockEnd {
+				copy(line, block[start-blockStart:start-blockStart+kept])
+			} else {
+				n, err := file.ReadAt(line, start)
+				if err != nil && !errors.Is(err, io.EOF) {
+					return err
 				}
-				if errors.Is(readErr, io.EOF) {
-					return offset, nil
-				}
-				break
+				line = line[:n]
 			}
-			if !errors.Is(readErr, bufio.ErrBufferFull) {
-				return offset, readErr
-			}
-			truncated = true
+		}
+		line = bytes.TrimSuffix(line, []byte{'\r'})
+		return emit(reverseLine{offset: start, data: line, truncated: length > int64(maxLineBytes)})
+	}
+
+	for position > 0 {
+		if err := ctx.Err(); err != nil {
+			return bytesRead, err
+		}
+		start := max(int64(0), position-int64(len(buffer)))
+		chunk := buffer[:position-start]
+		n, err := file.ReadAt(chunk, start)
+		bytesRead += int64(n)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return bytesRead, err
+		}
+		chunk = chunk[:n]
+		if start == 0 {
+			firstBlock = chunk
+		}
+		for index := len(chunk) - 1; index >= 0; index-- {
 			if err := ctx.Err(); err != nil {
-				return offset, err
+				return bytesRead, err
 			}
+			if chunk[index] != '\n' {
+				continue
+			}
+			lineStart := start + int64(index+1)
+			if lineStart != size {
+				if err := emitLine(lineStart, lineEnd, start, chunk); err != nil {
+					return bytesRead, err
+				}
+			}
+			lineEnd = start + int64(index)
+		}
+		position = start
+	}
+
+	if size > 0 {
+		if err := emitLine(0, lineEnd, 0, firstBlock); err != nil {
+			return bytesRead, err
 		}
 	}
+	return bytesRead, nil
 }
 
 func cloneProgress(progress Progress) *Progress {

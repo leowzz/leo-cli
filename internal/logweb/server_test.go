@@ -159,6 +159,59 @@ func TestSearchRequiresSameOriginAndStreamsNDJSON(t *testing.T) {
 	}
 }
 
+func TestSearchBatchesResultFlushes(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "app.log"), []byte(strings.Repeat("match\n", 120)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	catalog, _, err := logview.BuildCatalog(root, []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := New(catalog, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "http://example.com/api/search", strings.NewReader(`{"includeUnparsed":true}`))
+	request.Header.Set("Origin", "http://example.com")
+	response := &countingResponseRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	server.handleSearch(response, request)
+
+	decoder := json.NewDecoder(response.Body)
+	results := 0
+	done := false
+	for decoder.More() {
+		var event logview.Event
+		if err := decoder.Decode(&event); err != nil {
+			t.Fatal(err)
+		}
+		if event.Type == "result" {
+			results++
+		}
+		done = done || event.Type == "done"
+	}
+	if results != 120 {
+		t.Fatalf("results = %d, want 120", results)
+	}
+	if !done {
+		t.Fatal("search stream is missing done event")
+	}
+	if response.flushes != 5 {
+		t.Fatalf("flushes = %d, want 5", response.flushes)
+	}
+}
+
+type countingResponseRecorder struct {
+	*httptest.ResponseRecorder
+	flushes int
+}
+
+func (r *countingResponseRecorder) Flush() {
+	r.flushes++
+	r.ResponseRecorder.Flush()
+}
+
 func TestFollowStreamsSSE(t *testing.T) {
 	server := newTestServer(t, nil)
 	httpServer := httptest.NewServer(server)
@@ -271,6 +324,43 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 	}
 }
 
+func TestWorkspaceUsesBoundedFiveMinuteDefaults(t *testing.T) {
+	page, err := embeddedAssets.ReadFile("assets/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`aria-label="Apply Last 5 minutes range">Last 5 minutes</button>`,
+		`<option value="300" selected>Last 5 minutes</option>`,
+	} {
+		if !bytes.Contains(page, []byte(required)) {
+			t.Errorf("workspace is missing %q", required)
+		}
+	}
+
+	script, err := embeddedAssets.ReadFile("assets/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`const MAX_ROWS = 500;`,
+		`rangeSeconds: 300,`,
+		"enforceRowLimit();\n  if (!live) return;",
+		"else elements.logBody.append(row);",
+		"insertNewestRow(row, live);\n  scheduleMessageDisclosureUpdate();",
+	} {
+		if !bytes.Contains(script, []byte(required)) {
+			t.Errorf("workspace script is missing %q", required)
+		}
+	}
+	returnAt := bytes.Index(script, []byte("if (!live) return;"))
+	topAt := bytes.Index(script, []byte("if (wasAtTop)"))
+	heightAt := bytes.Index(script, []byte("const insertedHeight = row.getBoundingClientRect().height;"))
+	if returnAt < 0 || topAt < returnAt || heightAt < topAt {
+		t.Errorf("row height is measured before historical and auto-scroll fast paths")
+	}
+}
+
 func TestWorkspaceContainsResizableTableAndActionMenu(t *testing.T) {
 	server := newTestServer(t, nil)
 	httpServer := httptest.NewServer(server)
@@ -373,7 +463,7 @@ func TestWorkspaceScriptGuardsStaleSearchAndLiveOrder(t *testing.T) {
 	for _, required := range []string{
 		`state.searchController !== controller`,
 		`row.dataset.live = live ? "true" : "false"`,
-		`insertHistoricalRow(row)`,
+		`else elements.logBody.append(row)`,
 		`row.dataset.live !== "true" && row.dataset.timestamp`,
 	} {
 		if !bytes.Contains(body, []byte(required)) {

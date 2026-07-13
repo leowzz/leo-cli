@@ -22,6 +22,8 @@ import (
 
 const sessionCookieName = "leo_log_session"
 
+const searchResultFlushBatch = 50
+
 //go:embed assets/*
 var embeddedAssets embed.FS
 
@@ -211,12 +213,20 @@ func (s *Server) handleSearch(response http.ResponseWriter, request *http.Reques
 	response.Header().Set("Cache-Control", "no-store")
 	encoder := json.NewEncoder(response)
 	wrote := false
+	pendingResults := 0
 	err := s.searcher.Search(request.Context(), query, func(event logview.Event) error {
 		wrote = true
 		if err := encoder.Encode(event); err != nil {
 			return err
 		}
+		if event.Type == "result" {
+			pendingResults++
+			if pendingResults < searchResultFlushBatch {
+				return nil
+			}
+		}
 		flusher.Flush()
+		pendingResults = 0
 		return nil
 	})
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && !wrote {

@@ -14,9 +14,21 @@ import (
 func TestSearchStreamsSparseGigabyteWithBoundedAllocations(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "large.log")
-	writeTestFile(t, path, []byte("match first\n"))
+	writeTestFile(t, path, nil)
 	catalog := testCatalog(t, root)
 	if err := os.Truncate(path, 1<<30); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := []byte("\n2026-07-13 12:00:00 | INFO | search | user | api - match last\n")
+	if _, err := file.WriteAt(match, 1<<30-int64(len(match))); err != nil {
+		file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -28,7 +40,7 @@ func TestSearchStreamsSparseGigabyteWithBoundedAllocations(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&before)
 	go func() {
-		done <- searcher.Search(context.Background(), Query{Include: []string{"match"}, IncludeUnparsed: true}, func(event Event) error {
+		done <- searcher.Search(context.Background(), Query{Include: []string{"match"}}, func(event Event) error {
 			if event.Type == "result" {
 				select {
 				case firstResult <- struct{}{}:
