@@ -1,0 +1,20 @@
+{
+  "name": "leo-cli-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "pnpm check:locales && astro build",
+    "preview": "astro preview",
+    "test": "node --test scripts/*.test.mjs",
+    "check:locales": "node scripts/check-locales.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.41.3",
+    "astro": "7.0.7"
+  }
+}
