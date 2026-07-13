@@ -13,7 +13,7 @@ Replace the two embedded VHS WebM videos with animated WebP images that start au
 
 ## Generation
 
-VHS continues to render each tape to a temporary WebM because it does not output animated WebP directly. `make docs-demos` converts each temporary WebM with the existing ffmpeg installation, configures infinite looping, and removes the temporary file.
+VHS renders each tape to a temporary GIF because it does not output animated WebP directly. `make docs-demos` converts each temporary GIF with `gif2webp`, configures infinite looping, and removes the temporary file. The target requires the `vhs` and `gif2webp` executables and adds no project dependency.
 
 The committed outputs are:
 
