@@ -1,4 +1,4 @@
-Output site/public/demos/repo-picker.webm
+Output site/public/demos/repo-picker.tmp.webm
 Require bin/leo
 Require site/vhs/setup-repo-demo.sh
 Set Shell "bash"
@@ -25,4 +25,3 @@ Down
 Enter
 Wait+Screen /beacon/
 Sleep 1s
-Screenshot site/public/demos/repo-picker.png

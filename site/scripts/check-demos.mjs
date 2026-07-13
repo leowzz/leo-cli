@@ -4,10 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const publicRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const required = [
-  'demos/join.png',
-  'demos/join.webm',
-  'demos/repo-picker.png',
-  'demos/repo-picker.webm',
+  'demos/join.webp',
+  'demos/repo-picker.webp',
 ];
 
 export async function findMissingDemos(root = publicRoot) {

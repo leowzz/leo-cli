@@ -1,4 +1,4 @@
-Output site/public/demos/join.webm
+Output site/public/demos/join.tmp.webm
 Require bin/leo
 Set Shell "bash"
 Set Width 1000
@@ -14,6 +14,5 @@ Right
 Down 2
 Type "u"
 Sleep 2s
-Screenshot site/public/demos/join.png
 Hide
 Escape

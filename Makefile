@@ -2,6 +2,7 @@
 
 ENV_FILE ?= .env
 BIN ?= leo
+FFMPEG ?= ffmpeg
 VERSION := $(shell grep -E '^version=' $(ENV_FILE) 2>/dev/null | head -1 | cut -d= -f2-)
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 ifeq ($(VERSION),)
@@ -41,5 +42,10 @@ docs-build:
 
 docs-demos: build
 	command -v vhs >/dev/null
+	command -v $(FFMPEG) >/dev/null
 	vhs site/vhs/repo-picker.tape
+	$(FFMPEG) -y -i site/public/demos/repo-picker.tmp.webm -an -c:v libwebp_anim -preset text -quality 85 -loop 0 site/public/demos/repo-picker.webp
+	rm -f site/public/demos/repo-picker.tmp.webm
 	vhs site/vhs/join.tape
+	$(FFMPEG) -y -i site/public/demos/join.tmp.webm -an -c:v libwebp_anim -preset text -quality 85 -loop 0 site/public/demos/join.webp
+	rm -f site/public/demos/join.tmp.webm

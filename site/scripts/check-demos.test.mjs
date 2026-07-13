@@ -10,12 +10,8 @@ test('reports missing demo outputs', async () => {
   const root = await mkdtemp(join(tmpdir(), 'leo-docs-demos-'));
   try {
     await mkdir(join(root, 'demos'), { recursive: true });
-    await writeFile(join(root, 'demos', 'repo-picker.webm'), 'video');
-    assert.deepEqual(await findMissingDemos(root), [
-      'demos/join.png',
-      'demos/join.webm',
-      'demos/repo-picker.png',
-    ]);
+    await writeFile(join(root, 'demos', 'repo-picker.webp'), 'image');
+    assert.deepEqual(await findMissingDemos(root), ['demos/join.webp']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
