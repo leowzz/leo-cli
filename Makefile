@@ -12,7 +12,7 @@ COMMIT := unknown
 endif
 VERSION_LDFLAGS := -X github.com/leo/leo-cli/internal/version.Value=$(VERSION) -X github.com/leo/leo-cli/internal/version.CommandNameValue=$(BIN) -X github.com/leo/leo-cli/internal/version.CommitValue=$(COMMIT)
 
-.PHONY: dev test build release release-github
+.PHONY: dev test build release release-github docs-dev docs-build docs-demos
 
 dev:
 	go run .
@@ -29,3 +29,17 @@ release:
 
 release-github:
 	ENV_FILE="$(ENV_FILE)" BIN="$(BIN)" V="$(V)" scripts/release-github.sh
+
+docs-dev:
+	go run ./tools/docsgen
+	pnpm --dir site dev
+
+docs-build:
+	go run ./tools/docsgen
+	pnpm --dir site test
+	pnpm --dir site build
+
+docs-demos: build
+	command -v vhs >/dev/null
+	vhs site/vhs/repo-picker.tape
+	vhs site/vhs/join.tape
