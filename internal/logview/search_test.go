@@ -134,18 +134,12 @@ func TestScanReverseLinesKeepsEmptyFirstLine(t *testing.T) {
 }
 
 func TestSearchStopsReadingAfterTimestampBeforeStart(t *testing.T) {
-	root := t.TempDir()
 	old := strings.Repeat("2026-07-13 09:00:00 | INFO | old | user | api - old padding padding padding\n", 3000)
 	recent := "2026-07-13 10:04:00 | INFO | recent | user | api - recent\n"
-	path := filepath.Join(root, "app.log")
-	writeTestFile(t, path, []byte(old+recent))
-	now := time.Now()
-	if err := os.Chtimes(path, now, now); err != nil {
-		t.Fatal(err)
-	}
 	start := time.Date(2026, 7, 13, 10, 0, 0, 0, time.Local)
+	catalog := testCatalogWithLineAt(t, old+recent, start.Add(time.Minute))
 
-	events, err := collectSearch(t, NewSearcher(testCatalog(t, root)), Query{Start: start})
+	events, err := collectSearch(t, NewSearcher(catalog), Query{Start: start})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,8 +157,9 @@ func TestSearchCutoffKeepsInvalidTimestampRecord(t *testing.T) {
 	contents := "2026-07-13 09:00:00 | INFO | old | user | api - old\n" +
 		"not-a-time | INFO | invalid | user | api - invalid time\n"
 	start := time.Date(2026, 7, 13, 10, 0, 0, 0, time.Local)
+	catalog := testCatalogWithLineAt(t, contents, start.Add(time.Minute))
 
-	events, err := collectSearch(t, NewSearcher(testCatalogWithLine(t, contents)), Query{Start: start})
+	events, err := collectSearch(t, NewSearcher(catalog), Query{Start: start})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,8 +172,9 @@ func TestSearchCutoffKeepsInvalidTimestampRecord(t *testing.T) {
 func TestSearchDoesNotEmitLargeContinuationGroupBeforeOldAnchor(t *testing.T) {
 	contents := "2026-07-13 09:00:00 | ERROR | old | user | api - old\n" + strings.Repeat("stack line\n", 501)
 	start := time.Date(2026, 7, 13, 10, 0, 0, 0, time.Local)
+	catalog := testCatalogWithLineAt(t, contents, start.Add(time.Minute))
 
-	events, err := collectSearch(t, NewSearcher(testCatalogWithLine(t, contents)), Query{Start: start, IncludeUnparsed: true})
+	events, err := collectSearch(t, NewSearcher(catalog), Query{Start: start, IncludeUnparsed: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,8 +484,17 @@ func testCatalog(t *testing.T, root string) *Catalog {
 
 func testCatalogWithLine(t *testing.T, contents string) *Catalog {
 	t.Helper()
+	return testCatalogWithLineAt(t, contents, time.Now())
+}
+
+func testCatalogWithLineAt(t *testing.T, contents string, modTime time.Time) *Catalog {
+	t.Helper()
 	root := t.TempDir()
-	writeTestFile(t, filepath.Join(root, "app.log"), []byte(contents))
+	path := filepath.Join(root, "app.log")
+	writeTestFile(t, path, []byte(contents))
+	if err := os.Chtimes(path, modTime, modTime); err != nil {
+		t.Fatal(err)
+	}
 	return testCatalog(t, root)
 }
 
