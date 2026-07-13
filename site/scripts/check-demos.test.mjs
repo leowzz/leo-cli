@@ -6,6 +6,18 @@ import test from 'node:test';
 
 import { findMissingDemos } from './check-demos.mjs';
 
+test('reports all demo outputs missing from an empty directory', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'leo-docs-demos-'));
+  try {
+    assert.deepEqual(await findMissingDemos(root), [
+      'demos/join.webp',
+      'demos/repo-picker.webp',
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('reports missing demo outputs', async () => {
   const root = await mkdtemp(join(tmpdir(), 'leo-docs-demos-'));
   try {
