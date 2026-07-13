@@ -31,7 +31,7 @@ leo repo reindex
 leo repo
 ```
 
-Type to filter repositories. Press Enter to print the selected repository's absolute path, or Esc or Ctrl-C to cancel.
+Press `/` to enter filter mode and type a query. Press Up/Down to apply the filter, then use Up/Down or j/k to move through results. Press Enter to print the selected repository's absolute path. Esc clears an active filter first and quits when no filter is active; Ctrl-C always cancels.
 
 ## Enable Shell Jumps
 

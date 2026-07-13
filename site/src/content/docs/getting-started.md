@@ -31,7 +31,7 @@ leo repo reindex
 leo repo
 ```
 
-输入文字过滤仓库，按 Enter 输出所选仓库的绝对路径；按 Esc 或 Ctrl-C 取消。
+按 `/` 进入过滤模式并输入关键词；按 Up/Down 应用过滤，再用 Up/Down 或 j/k 移动选择。按 Enter 输出所选仓库的绝对路径。Esc 会先清除活动过滤器，没有过滤器时退出；Ctrl-C 随时取消。
 
 ## 启用 shell 跳转
 
