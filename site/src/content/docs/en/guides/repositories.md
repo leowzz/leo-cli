@@ -19,7 +19,7 @@ The scan updates the SQLite index. Unreadable roots produce warnings; the comman
 leo repo
 ```
 
-Type to filter repositories. Press Enter to accept the current item, or Esc or Ctrl-C to cancel. When accepted, `leo repo` only prints the selected repository's absolute path to standard output; it cannot change its parent shell's working directory.
+Press `/` to enter filter mode and type a query. Press Up/Down to apply the filter, then use Up/Down or j/k to move through results. Press Enter to accept the current item. Esc clears an active filter first and quits when no filter is active; Ctrl-C always cancels. When accepted, `leo repo` only prints the selected repository's absolute path to standard output; it cannot change its parent shell's working directory.
 
 ## Change Directory In The Shell
 
