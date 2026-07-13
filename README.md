@@ -2,35 +2,36 @@
 
 [中文](https://github.com/leowzz/leo-cli/blob/main/README.zh.md) | English
 
-`leo-cli` builds a `leo` binary for personal command-line workflows. It currently covers five practical jobs:
+`leo-cli` builds a `leo` binary for personal command-line workflows. It currently covers these practical jobs:
 
 - Index local Git repositories and pick one from an interactive terminal list.
 - Generate a shell helper so `repo` can jump into the selected repository.
 - Build SQL `IN` values from clipboard, txt, or csv input and copy the result.
+- Convert Unix timestamps and common date-time strings across timezones.
 - Copy container images with registry aliases through `skopeo copy`.
-- Search and follow configured project logs in a temporary browser workspace.
+- Search and follow project logs in a temporary browser workspace.
 
 ## Install
 
-Download a binary from [GitHub Releases](https://github.com/leowzz/leo-cli/releases). Asset names look like:
+Download a binary from [GitHub Releases](https://github.com/leowzz/leo-cli/releases). Asset names use the release tag:
 
 ```text
-leo-v0.0.9-darwin-arm64
-leo-v0.0.9-linux-amd64
-leo-v0.0.9-windows-amd64.exe
+leo-TAG-darwin-arm64
+leo-TAG-linux-amd64
+leo-TAG-windows-amd64.exe
 ```
 
 macOS / Linux:
 
 ```bash
-chmod +x leo-v0.0.9-darwin-arm64
-mv leo-v0.0.9-darwin-arm64 ~/bin/leo
+chmod +x leo-TAG-darwin-arm64
+mv leo-TAG-darwin-arm64 ~/bin/leo
 ```
 
 Windows:
 
 ```powershell
-ren leo-v0.0.9-windows-amd64.exe leo.exe
+ren leo-TAG-windows-amd64.exe leo.exe
 ```
 
 Put the directory containing `leo` or `leo.exe` on your `PATH`.
@@ -309,6 +310,7 @@ The repository index uses SQLite with WAL. Rows are upserted by absolute reposit
 | `leo repo` | Open the interactive repository picker and print the selected path |
 | `leo shell init zsh` | Print zsh integration |
 | `leo shell init bash` | Print bash integration |
+| `leo completion SHELL` | Print shell completion for bash, fish, PowerShell, or zsh |
 | `leo join [FILE]` | Build SQL `IN` values from clipboard, txt, or csv |
 | `leo time [VALUE]` | Convert current time, timestamps, and common time strings |
 | `leo docker list` | Print Docker registry aliases |
@@ -338,7 +340,7 @@ make build
 Version metadata comes from `.env`:
 
 ```text
-version=v0.0.9
+version=0.1.0
 ```
 
 Create a tag and bump the patch version:

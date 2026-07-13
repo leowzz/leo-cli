@@ -1,36 +1,37 @@
 # leo-cli
 
-中文 | [English](https://github.com/leowzz/leo-cli/blob/main/README.en.md)
+中文 | [English](https://github.com/leowzz/leo-cli/blob/main/README.md)
 
-`leo-cli` 是一组个人命令行工具，构建产物是 `leo`。当前主要做五件事：
+`leo-cli` 是一组个人命令行工具，构建产物是 `leo`。当前主要包括：
 
 - 扫描本地 Git 仓库，并用交互式终端列表快速选择仓库。
 - 生成 shell 函数，让 `repo` 选择仓库后直接 `cd` 进去。
 - 从剪贴板、txt 或 csv 构造 SQL `IN` 列表，并复制结果。
+- 转换 Unix 时间戳和常见日期时间字符串，并输出多时区结果。
 - 用 registry alias 简化 `skopeo copy` 的镜像搬运命令。
 - 在临时浏览器工作台中搜索和跟随项目日志。
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/leowzz/leo-cli/releases) 下载对应平台的二进制文件。文件名形如：
+从 [GitHub Releases](https://github.com/leowzz/leo-cli/releases) 下载对应平台的二进制文件。文件名使用发布 tag：
 
 ```text
-leo-v0.0.9-darwin-arm64
-leo-v0.0.9-linux-amd64
-leo-v0.0.9-windows-amd64.exe
+leo-TAG-darwin-arm64
+leo-TAG-linux-amd64
+leo-TAG-windows-amd64.exe
 ```
 
 macOS / Linux:
 
 ```bash
-chmod +x leo-v0.0.9-darwin-arm64
-mv leo-v0.0.9-darwin-arm64 ~/bin/leo
+chmod +x leo-TAG-darwin-arm64
+mv leo-TAG-darwin-arm64 ~/bin/leo
 ```
 
 Windows:
 
 ```powershell
-ren leo-v0.0.9-windows-amd64.exe leo.exe
+ren leo-TAG-windows-amd64.exe leo.exe
 ```
 
 把 `leo` 或 `leo.exe` 所在目录加入 `PATH` 后即可使用。
@@ -179,7 +180,22 @@ leo docker copy python:3.12-slim t --platform linux/arm64/v8
 
 ## 日志查看器
 
-先配置项目和允许读取的日志目录：
+在项目根目录或任意子目录运行：
+
+```bash
+leo log
+```
+
+无需提前配置项目。`leo` 会使用最近的 Git 根目录（非 Git 目录中使用当前目录），先检查 `runtime/logs`、`logs`、`log`、`var/log` 和 `storage/logs` 等常见路径；没有命中时，再有界搜索名为 `log` 或 `logs` 的目录。
+
+日志位于其他位置时，可以显式传入一个或多个目录：
+
+```bash
+leo log --logs ./custom/logs
+leo log --logs ./api/logs --logs ./worker/logs
+```
+
+相对 `--logs` 路径从执行命令时的目录解析。需要持久化项目别名或自定义根目录时，再添加配置：
 
 ```yaml
 proj:
@@ -189,13 +205,7 @@ proj:
       - /docker-runtime
 ```
 
-在项目根目录或任意子目录运行：
-
-```bash
-leo log
-```
-
-`leo` 会从当前目录向上查找，选择目录名包含项目 key 的最近祖先，启动临时 HTTP 服务并打印一次性 URL。相对日志目录从识别出的项目根目录解析。需要短别名时可以单独设置匹配字符串：
+当当前目录命中已配置项目时，配置优先。`leo` 会向上查找目录名包含项目 key 的最近祖先，并从该根目录解析相对日志目录。别名可以使用不同的匹配字符串：
 
 ```yaml
 proj:
@@ -211,6 +221,8 @@ proj:
 leo log --project mc
 leo log --host 0.0.0.0 --port 9031
 ```
+
+显式 `--project` 会严格匹配配置，且不能与 `--logs` 同时使用。
 
 默认只监听 `127.0.0.1`，端口由系统自动选择。在远程服务器上，可以通过 SSH 端口转发手动打开打印出的 URL；也可以显式绑定内网地址。非 loopback 地址上的明文 HTTP 只适合可信开发网络。
 
@@ -291,6 +303,7 @@ proj:
 | `leo repo` | 打开交互式仓库选择器，选中后输出绝对路径 |
 | `leo shell init zsh` | 打印 zsh 集成脚本 |
 | `leo shell init bash` | 打印 bash 集成脚本 |
+| `leo completion SHELL` | 打印 bash、fish、PowerShell 或 zsh 补全脚本 |
 | `leo join [FILE]` | 从剪贴板、txt 或 csv 构造 SQL `IN` 值 |
 | `leo time [VALUE]` | 转换当前时间、时间戳和常见时间字符串 |
 | `leo docker list` | 打印 Docker registry alias |
@@ -320,7 +333,7 @@ make build
 版本号来自 `.env`：
 
 ```text
-version=v0.0.9
+version=0.1.0
 ```
 
 打 tag 并递增 patch 版本：
