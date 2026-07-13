@@ -3,9 +3,20 @@ title: leo-cli
 description: 面向个人开发工作流的命令行工具。
 ---
 
-`leo-cli` 提供仓库切换、SQL IN 构造、时间转换、镜像搬运和本地日志查看能力。
+`leo-cli` 是一组面向个人开发工作流的命令行工具，涵盖仓库切换、SQL IN 构造、时间转换、镜像搬运和本地日志查看。
+
+从源码构建：
+
+```bash
+make build
+```
+
+快速开始：
 
 ```bash
 leo repo reindex
 leo repo
+eval "$(leo shell init zsh)"
 ```
+
+从[开始使用](./getting-started/)了解安装和 shell 集成，按任务查看[使用指南](./guides/repositories/)，或直接浏览[命令参考](./reference/commands/leo/)。

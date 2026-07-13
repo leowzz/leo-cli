@@ -17,6 +17,31 @@ export default defineConfig({
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/leowzz/leo-cli' },
       ],
+      sidebar: [
+        { slug: 'getting-started' },
+        {
+          label: '使用指南',
+          translations: { en: 'Guides' },
+          items: [
+            { slug: 'guides/repositories' },
+            { slug: 'guides/join' },
+            { slug: 'guides/time' },
+            { slug: 'guides/docker-copy' },
+            { slug: 'guides/log-viewer' },
+          ],
+        },
+        {
+          label: '参考',
+          translations: { en: 'Reference' },
+          items: [
+            { slug: 'reference/configuration' },
+            { slug: 'reference/runtime' },
+            { autogenerate: { directory: 'reference/commands', collapsed: true } },
+          ],
+        },
+        { slug: 'concepts' },
+        { slug: 'development' },
+      ],
       customCss: ['./src/styles/custom.css'],
     }),
   ],

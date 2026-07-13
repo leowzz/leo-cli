@@ -3,10 +3,24 @@ title: leo-cli
 description: Command-line tools for personal development workflows.
 ---
 
-`leo-cli` provides repository navigation, SQL IN construction, time conversion,
-image copying, and local log inspection.
+`leo-cli` is a set of command-line tools for personal development workflows,
+covering repository navigation, SQL IN construction, time conversion, image
+copying, and local log inspection.
+
+Build from source:
+
+```bash
+make build
+```
+
+Quick start:
 
 ```bash
 leo repo reindex
 leo repo
+eval "$(leo shell init zsh)"
 ```
+
+Read [Getting Started](./getting-started/) for installation and shell integration,
+follow the task-focused [Guides](./guides/repositories/), or browse the
+[command reference](./reference/commands/leo/).

@@ -1,0 +1,43 @@
+---
+title: Build SQL IN Values
+description: Select values from the clipboard, standard input, or a file and copy a SQL IN list.
+---
+
+## Select Input
+
+When a file is supplied, `leo join` reads that `.txt` or `.csv` file:
+
+```bash
+leo join ids.txt
+leo join ids.csv
+```
+
+Without a file, piped stdin takes priority over the clipboard:
+
+```bash
+seq 1 10 | leo join
+leo join
+```
+
+Text is split on commas or whitespace. CSV input attempts to detect a header and lets you select among fields.
+
+## Interactive Keys
+
+- Left/Right or h/l: switch CSV fields.
+- Up/Down: switch output formats.
+- u: toggle unique and original values; unique mode preserves first-seen order and is the default.
+- Enter: accept and copy the result to the clipboard.
+- Esc or Ctrl-C: cancel.
+
+## Output Formats
+
+The picker offers four formats:
+
+```text
+1,2,3
+(1,2,3)
+id in (1,2,3)
+'1','2','3'
+```
+
+Quoted output escapes a single quote inside a value as two single quotes. After confirmation, the command prints the count, a preview, and `已复制到剪贴板`. Cancellation prints `已取消` and does not copy a result.
