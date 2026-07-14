@@ -323,6 +323,13 @@ function searchQuery() {
   };
 }
 
+function runFilteredSearch() {
+  const query = searchQuery();
+  const filters = [query.include, query.exclude, query.searchIds, query.userIds, query.sources, query.levels];
+  if (filters.some((values) => values.length)) stopFollow();
+  runSearch();
+}
+
 async function runSearch() {
   if (state.searchController) state.searchController.abort();
   if (!state.selected.size) {
@@ -768,7 +775,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-elements.search.addEventListener("click", runSearch);
+elements.search.addEventListener("click", runFilteredSearch);
 elements.cancel.addEventListener("click", () => state.searchController?.abort());
 elements.clear.addEventListener("click", clearConsole);
 elements.rangeApply.addEventListener("click", applySelectedRange);
@@ -795,7 +802,7 @@ elements.logScroll.addEventListener("scroll", () => {
 });
 for (const input of [elements.include, elements.exclude, elements.searchID, elements.userID, elements.source]) {
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") runSearch();
+    if (event.key === "Enter") runFilteredSearch();
   });
 }
 window.addEventListener("beforeunload", () => {

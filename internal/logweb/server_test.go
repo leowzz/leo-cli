@@ -324,6 +324,40 @@ func TestWorkspaceContainsOperationalControls(t *testing.T) {
 	}
 }
 
+func TestWorkspaceStopsFollowForManualFilteredSearch(t *testing.T) {
+	script, err := embeddedAssets.ReadFile("assets/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, required := range []string{
+		`const filters = [query.include, query.exclude, query.searchIds, query.userIds, query.sources, query.levels];`,
+		`elements.search.addEventListener("click", runFilteredSearch);`,
+		`if (event.key === "Enter") runFilteredSearch();`,
+		`elements.rangeApply.addEventListener("click", applySelectedRange);`,
+		`elements.showUnparsed.addEventListener("change", runSearch);`,
+	} {
+		if !bytes.Contains(script, []byte(required)) {
+			t.Errorf("workspace script is missing %q", required)
+		}
+	}
+
+	wrapperAt := bytes.Index(script, []byte("function runFilteredSearch() {"))
+	if wrapperAt < 0 {
+		t.Fatal("workspace script is missing runFilteredSearch")
+	}
+	wrapper := script[wrapperAt:]
+	endAt := bytes.Index(wrapper, []byte("\nasync function runSearch()"))
+	if endAt < 0 {
+		t.Fatal("runFilteredSearch is not immediately before runSearch")
+	}
+	wrapper = wrapper[:endAt]
+	stopAt := bytes.Index(wrapper, []byte("stopFollow();"))
+	searchAt := bytes.Index(wrapper, []byte("runSearch();"))
+	if stopAt < 0 || searchAt < 0 || stopAt > searchAt {
+		t.Fatal("filtered search does not stop Follow before searching")
+	}
+}
+
 func TestWorkspaceUsesBoundedFiveMinuteDefaults(t *testing.T) {
 	page, err := embeddedAssets.ReadFile("assets/index.html")
 	if err != nil {
