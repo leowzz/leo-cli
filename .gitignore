@@ -5,4 +5,3 @@ dist/
 site/.astro/
 site/dist/
 site/node_modules/
-*.webp

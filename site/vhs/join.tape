@@ -11,11 +11,11 @@ Type "bin/leo join site/vhs/fixtures/users.csv"
 Sleep 0.5s
 Enter
 Wait+Screen /user_id in/
-Sleep 0.5s
+Sleep 0.8s
 Right
-Sleep 0.5s
+Sleep 0.8s
 Down 2
-Sleep 0.5s
+Sleep 0.8s
 Type "u"
 Sleep 3s
 Hide

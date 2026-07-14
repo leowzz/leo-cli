@@ -18,10 +18,12 @@ Show
 Type "bin/leo repo"
 Enter
 Wait+Screen /Repositories/
+Sleep 1.2s
 Type "/"
+Sleep 0.2s
 Type "bea"
 Sleep 2s
 Down
 Enter
 Wait+Screen /beacon/
-Sleep 2s
+Sleep 3s
