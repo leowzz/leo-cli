@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install leo, create a repository index, and enable shell repository jumps.
+description: Install leo, build your first SQL IN list, then optionally enable repository jumps.
 ---
 
 ## Install
@@ -21,6 +21,22 @@ make build
 ```
 
 The output is `bin/leo`.
+
+## Build Your First SQL IN List
+
+Copy values separated by commas or whitespace, then run:
+
+```bash
+leo join
+```
+
+You can also pipe values directly. Piped input takes priority over the clipboard:
+
+```bash
+seq 1 10 | leo join
+```
+
+Choose an output format and press Enter to copy the result. See [Build SQL IN Values](./guides/join/) for more input methods and interactive keys.
 
 ## Create The First Index
 

@@ -1,11 +1,11 @@
 ---
 title: leo-cli
-description: 面向个人开发工作流的命令行工具。
+description: 以 SQL IN 构造为主的个人开发命令行工具。
 ---
 
 import VhsDemo from '../../components/VhsDemo.astro';
 
-`leo-cli` 是一组面向个人开发工作流的命令行工具，涵盖仓库切换、SQL IN 构造、时间转换、镜像搬运和本地日志查看。
+`leo-cli` 是一组面向个人开发工作流的命令行工具，主推 SQL IN 构造，同时涵盖仓库切换、时间转换、镜像搬运和本地日志查看。
 
 从源码构建：
 
@@ -16,16 +16,14 @@ make build
 快速开始：
 
 ```bash
-leo repo reindex
-leo repo
-eval "$(leo shell init zsh)"
+leo join
 ```
 
 <VhsDemo
-  src="demos/repo-picker.webp"
-  caption="输入关键词并选择仓库。"
-  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/repo-picker.tape"
+  src="demos/join.webp"
+  caption="选择 CSV 字段和输出格式，并复制 SQL IN 列表。"
+  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/join.tape"
   sourceLabel="查看 VHS 源码"
 />
 
-从[开始使用](./getting-started/)了解安装和 shell 集成，按任务查看[使用指南](./guides/repositories/)，或直接浏览[命令参考](./reference/commands/leo/)。
+从[开始使用](./getting-started/)了解安装和第一个 SQL IN 工作流，按任务查看[构造 SQL IN](./guides/join/)，或直接浏览[命令参考](./reference/commands/leo/)。

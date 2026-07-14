@@ -4,9 +4,9 @@
 
 `leo-cli` 是一组个人命令行工具，构建产物是 `leo`：
 
+- 从剪贴板、txt 或 csv 构造 SQL `IN` 列表，并复制结果。
 - 扫描本地 Git 仓库，并用交互式终端列表快速选择仓库。
 - 生成 shell 函数，让 `repo` 选择仓库后直接 `cd` 进去。
-- 从剪贴板、txt 或 csv 构造 SQL `IN` 列表，并复制结果。
 - 转换 Unix 时间戳和常见日期时间字符串，并输出多时区结果。
 - 用 registry alias 简化 `skopeo copy` 的镜像搬运命令。
 - 在临时浏览器工作台中搜索和跟随项目日志。
@@ -26,9 +26,7 @@ make build
 ## 快速开始
 
 ```bash
-leo repo reindex
-leo repo
-eval "$(leo shell init zsh)"
+leo join
 ```
 
 ## 文档

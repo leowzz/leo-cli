@@ -1,13 +1,13 @@
 ---
 title: leo-cli
-description: Command-line tools for personal development workflows.
+description: Personal command-line tools led by an interactive SQL IN workflow.
 ---
 
 import VhsDemo from '../../../components/VhsDemo.astro';
 
 `leo-cli` is a set of command-line tools for personal development workflows,
-covering repository navigation, SQL IN construction, time conversion, image
-copying, and local log inspection.
+led by SQL IN construction and supported by repository navigation, time
+conversion, image copying, and local log inspection.
 
 Build from source:
 
@@ -18,18 +18,16 @@ make build
 Quick start:
 
 ```bash
-leo repo reindex
-leo repo
-eval "$(leo shell init zsh)"
+leo join
 ```
 
 <VhsDemo
-  src="demos/repo-picker.webp"
-  caption="Type a query and select a repository."
-  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/repo-picker.tape"
+  src="demos/join.webp"
+  caption="Choose a CSV field and output format, then copy the SQL IN list."
+  tapeHref="https://github.com/leowzz/leo-cli/blob/main/site/vhs/join.tape"
   sourceLabel="View VHS source"
 />
 
-Read [Getting Started](./getting-started/) for installation and shell integration,
-follow the task-focused [Guides](./guides/repositories/), or browse the
+Read [Getting Started](./getting-started/) for installation and your first SQL IN workflow,
+follow the task-focused [Build SQL IN Values](./guides/join/), or browse the
 [command reference](./reference/commands/leo/).

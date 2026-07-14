@@ -4,9 +4,9 @@
 
 `leo-cli` builds a `leo` binary for personal command-line workflows:
 
+- Build SQL `IN` values from clipboard, txt, or csv input and copy the result.
 - Index local Git repositories and pick one from an interactive terminal list.
 - Generate a shell helper so `repo` can jump into the selected repository.
-- Build SQL `IN` values from clipboard, txt, or csv input and copy the result.
 - Convert Unix timestamps and common date-time strings across timezones.
 - Copy container images with registry aliases through `skopeo copy`.
 - Search and follow project logs in a temporary browser workspace.
@@ -26,9 +26,7 @@ The output is `bin/leo`.
 ## Quick Start
 
 ```bash
-leo repo reindex
-leo repo
-eval "$(leo shell init zsh)"
+leo join
 ```
 
 ## Documentation

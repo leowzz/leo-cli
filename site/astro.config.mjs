@@ -23,8 +23,8 @@ export default defineConfig({
           label: '使用指南',
           translations: { en: 'Guides' },
           items: [
-            { slug: 'guides/repositories' },
             { slug: 'guides/join' },
+            { slug: 'guides/repositories' },
             { slug: 'guides/time' },
             { slug: 'guides/docker-copy' },
             { slug: 'guides/log-viewer' },

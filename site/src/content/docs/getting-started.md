@@ -1,6 +1,6 @@
 ---
 title: 开始使用
-description: 安装 leo、建立仓库索引并启用 shell 仓库跳转。
+description: 安装 leo、构造第一个 SQL IN 列表，再按需启用仓库跳转。
 ---
 
 ## 安装
@@ -21,6 +21,22 @@ make build
 ```
 
 产物位于 `bin/leo`。
+
+## 第一次构造 SQL IN
+
+复制一组以逗号或空白分隔的值，然后运行：
+
+```bash
+leo join
+```
+
+也可以直接传入管道；存在管道输入时会优先于剪贴板：
+
+```bash
+seq 1 10 | leo join
+```
+
+选择输出格式后按 Enter，结果会复制到剪贴板。更多输入方式和交互按键见[构造 SQL IN](./guides/join/)。
 
 ## 第一次建立索引
 
