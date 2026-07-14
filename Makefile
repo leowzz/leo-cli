@@ -3,6 +3,7 @@
 ENV_FILE ?= .env
 BIN ?= leo
 FFMPEG ?= ffmpeg
+WEBPMUX ?= webpmux
 VERSION := $(shell grep -E '^version=' $(ENV_FILE) 2>/dev/null | head -1 | cut -d= -f2-)
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null)
 ifeq ($(VERSION),)
@@ -42,12 +43,15 @@ docs-build:
 
 docs-demos: build
 	set -eu; \
-	trap 'rm -f site/public/demos/repo-picker.tmp.webm site/public/demos/join.tmp.webm site/public/demos/repo-picker.tmp.webp site/public/demos/join.tmp.webp' EXIT; \
+	trap 'rm -f site/public/demos/repo-picker.tmp.webm site/public/demos/join.tmp.webm site/public/demos/repo-picker.tmp.webp site/public/demos/join.tmp.webp site/public/demos/repo-picker.ready.webp site/public/demos/join.ready.webp' EXIT; \
 	command -v vhs >/dev/null; \
 	command -v $(FFMPEG) >/dev/null; \
+	command -v $(WEBPMUX) >/dev/null; \
 	vhs site/vhs/repo-picker.tape; \
 	$(FFMPEG) -y -i site/public/demos/repo-picker.tmp.webm -an -c:v libwebp_anim -preset text -quality 85 -loop 0 site/public/demos/repo-picker.tmp.webp; \
+	$(WEBPMUX) -set bgcolor 255,22,22,22 site/public/demos/repo-picker.tmp.webp -o site/public/demos/repo-picker.ready.webp; \
 	vhs site/vhs/join.tape; \
 	$(FFMPEG) -y -i site/public/demos/join.tmp.webm -an -c:v libwebp_anim -preset text -quality 85 -loop 0 site/public/demos/join.tmp.webp; \
-	mv site/public/demos/repo-picker.tmp.webp site/public/demos/repo-picker.webp; \
-	mv site/public/demos/join.tmp.webp site/public/demos/join.webp
+	$(WEBPMUX) -set bgcolor 255,22,22,22 site/public/demos/join.tmp.webp -o site/public/demos/join.ready.webp; \
+	mv site/public/demos/repo-picker.ready.webp site/public/demos/repo-picker.webp; \
+	mv site/public/demos/join.ready.webp site/public/demos/join.webp

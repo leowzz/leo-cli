@@ -13,7 +13,7 @@ Replace the two embedded VHS WebM videos with animated WebP images that start au
 
 ## Generation
 
-VHS renders each tape to a temporary WebM because it does not output animated WebP directly. `make docs-demos` converts each temporary WebM with an ffmpeg build that provides the `libwebp_anim` encoder, configures infinite looping, and removes the temporary file. The target uses `FFMPEG ?= ffmpeg` so a keg-only Homebrew `ffmpeg-full` binary can be supplied without hard-coding a platform path.
+VHS renders each tape to a temporary WebM because it does not output animated WebP directly. `make docs-demos` converts each temporary WebM with ffmpeg's `libwebp_anim` encoder, then uses `webpmux` to set the animation background to the terminal color `#161616`; this prevents transparent incremental frames from flashing white. The target configures infinite looping, replaces both outputs only after both conversions succeed, and exposes `FFMPEG` and `WEBPMUX` overrides without hard-coding platform paths.
 
 The committed outputs are:
 
