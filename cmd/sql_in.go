@@ -333,7 +333,7 @@ func (m sqlInPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case tea.WindowSizeMsg:
-		m.list.SetSize(msg.Width, maxInt(1, msg.Height-6))
+		m.list.SetSize(msg.Width, maxInt(1, msg.Height-9))
 	}
 
 	var cmd tea.Cmd

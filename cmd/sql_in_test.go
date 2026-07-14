@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestParseSQLInTextValuesSplitsWhitespaceAndCommas(t *testing.T) {
@@ -177,6 +178,29 @@ func TestSQLInPickerMovesAcrossColumnsAndFormats(t *testing.T) {
 	model = updated.(sqlInPickerModel)
 	if !model.accepted {
 		t.Fatal("accepted = false, want true")
+	}
+}
+
+func TestSQLInPickerFitsTerminalHeight(t *testing.T) {
+	model := newSQLInPickerModel(sqlInSource{
+		columns: []string{"user", "cyber", "conversation_mode", "uc_message_count"},
+		rows: [][]string{
+			{"746139524639227913", "37", "0", "303634"},
+			{"786487795047727122", "51", "0", "291503"},
+			{"796897623599480856", "25", "0", "289260"},
+			{"371486326274392080", "3", "0", "191200"},
+		},
+	})
+
+	const width, height = 80, 24
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: width, Height: height})
+	view := updated.(sqlInPickerModel).View()
+	got := 0
+	for _, line := range strings.Split(strings.TrimSuffix(view, "\n"), "\n") {
+		got += maxInt(1, (lipgloss.Width(line)+width-1)/width)
+	}
+	if got > height {
+		t.Fatalf("picker height = %d lines, want at most %d", got, height)
 	}
 }
 
