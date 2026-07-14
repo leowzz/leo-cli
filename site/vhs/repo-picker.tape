@@ -20,8 +20,8 @@ Enter
 Wait+Screen /Repositories/
 Type "/"
 Type "bea"
-Sleep 1s
+Sleep 2s
 Down
 Enter
 Wait+Screen /beacon/
-Sleep 1s
+Sleep 2s
