@@ -10,7 +10,7 @@ Set Theme { "name": "leo", "black": "#161616", "red": "#ef4444", "green": "#22c5
 Type "bin/leo join site/vhs/fixtures/users.csv"
 Sleep 0.5s
 Enter
-Wait+Screen /user_id in/
+Wait+Screen /字段: user_id/
 Sleep 0.8s
 Right
 Sleep 0.8s
