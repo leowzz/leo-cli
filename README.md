@@ -5,6 +5,7 @@
 `leo-cli` builds a `leo` binary for personal command-line workflows:
 
 - Build SQL `IN` values from clipboard, txt, or csv input and copy the result.
+- Normalize Chinese and full-width punctuation in clipboard code.
 - Index local Git repositories and pick one from an interactive terminal list.
 - Generate a shell helper so `repo` can jump into the selected repository.
 - Convert Unix timestamps and common date-time strings across timezones.

@@ -24,6 +24,7 @@ export default defineConfig({
           translations: { en: 'Guides' },
           items: [
             { slug: 'guides/join' },
+            { slug: 'guides/norm' },
             { slug: 'guides/repositories' },
             { slug: 'guides/time' },
             { slug: 'guides/docker-copy' },

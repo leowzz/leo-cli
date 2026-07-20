@@ -26,6 +26,7 @@ leo [flags]
 * [leo docker](../leo_docker/)	 - Docker registry helpers
 * [leo join](../leo_join/)	 - Build a SQL IN value list from file or clipboard
 * [leo log](../leo_log/)	 - Open a temporary browser workspace for project logs
+* [leo norm](../leo_norm/)	 - Normalize clipboard code punctuation
 * [leo repo](../leo_repo/)	 - Browse indexed repositories
 * [leo shell](../leo_shell/)	 - Shell integration helpers
 * [leo time](../leo_time/)	 - Convert timestamps and common time strings
