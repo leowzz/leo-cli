@@ -1,6 +1,38 @@
 package cmd
 
-import "strings"
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/atotto/clipboard"
+	"github.com/spf13/cobra"
+)
+
+var normCmd = &cobra.Command{
+	Use:   "norm",
+	Short: "Normalize clipboard code punctuation",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runNorm(cmd.OutOrStdout(), clipboard.ReadAll, clipboard.WriteAll)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(normCmd)
+}
+
+func runNorm(stdout io.Writer, readClipboard func() (string, error), writeClipboard func(string) error) error {
+	text, err := readClipboard()
+	if err != nil {
+		return err
+	}
+	if err := writeClipboard(normalizeCode(text)); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, "\u5df2\u89c4\u8303\u5316\u526a\u8d34\u677f")
+	return err
+}
 
 func normalizeCode(text string) string {
 	return strings.Map(func(r rune) rune {
