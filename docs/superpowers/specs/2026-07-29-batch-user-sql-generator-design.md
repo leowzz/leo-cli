@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add `leo batch-users`, a local command that generates MySQL user inserts and
+Add `leo mc-uids`, a local command that generates MySQL user inserts and
 matching Redis access-token mappings for a contiguous three-digit UID suffix
 range. The command only writes text to stdout and never connects to MySQL or
 Redis.
@@ -10,7 +10,7 @@ Redis.
 ## Command
 
 ```bash
-leo batch-users --uid '3181538941{001,010}' [--token-prefix leo]
+leo mc-uids --uid '3181538941{001,010}' [--token-prefix leo]
 ```
 
 - `--uid` is required and has the exact form `<numeric-prefix>{NNN,NNN}`.
@@ -26,16 +26,19 @@ For the example above, the generated IDs are `3181538941001` through
 
 ## MySQL Output
 
-Write one multi-row `INSERT INTO \`mindcraft_tokyo\`.\`users\`` statement. Use
+Write one multi-row `INSERT INTO \`users\`` statement. Use
 the column list and values from the supplied source user, with these changes
 for each generated suffix:
 
 - `id`: numeric prefix plus the zero-padded three-digit suffix.
-- `username`: `leot1u` plus the suffix.
-- `email`: `leot1u` plus the suffix plus `@hakko.ai`.
+- `username`: `leot1u` plus the complete generated UID.
+- `email`: `leot1u` plus the complete generated UID plus `@hakko.ai`.
+- `account_type`: `0`, for a local platform account.
+- `other_platform_uid`: `NULL`, so generated users do not share an external
+  login identity.
 - `created_at` and `updated_at`: `NOW()`.
 
-All other values remain fixed:
+All remaining values stay fixed:
 
 ```text
 hashed_password = $2b$12$ccC5ZsvGLPBYE8OcI3D6qeu/nGQuwIvB1YtnHK185XljLwlSPOJ/a
@@ -54,8 +57,8 @@ is_cyber = 0
 character_language = en
 source = HakkoAI-v0.5.8.1-Install.exe
 active_conversation_frequency = middle
-account_type = 1
-other_platform_uid = 104907950741872951526
+account_type = 0
+other_platform_uid = NULL
 ys_map_search_goods = 0
 ys_active_dialogue = 2
 bubble_switch = 1
@@ -82,20 +85,27 @@ bio = sed in esse date
 Preserve the source column order. Quote SQL string and JSON values with single
 quotes, keep numeric values unquoted, and emit `NULL` without quotes.
 
+The complete UID keeps generated emails distinct when separate batches reuse
+the same three-digit suffixes with different numeric prefixes. Re-running an
+identical or overlapping UID range still fails on the `id` primary key and
+unique `email` index, which is intentional; do not emit `INSERT IGNORE` or an
+upsert. `phone = NULL` may be repeated under MySQL's unique-index semantics.
+The remaining repeated fixed values are not unique keys in the supplied DDL.
+
 ## Redis Output
 
 After the complete MySQL statement, emit exactly two empty lines, then one
 Redis command per generated account:
 
 ```text
-set access_token:<token-prefix><suffix>:user_id:app_platform <uid>:web
+set access_token:<token-prefix><uid>:user_id:app_platform <uid>:web
 ```
 
 Example:
 
 ```text
-set access_token:leo001:user_id:app_platform 3181538941001:web
-set access_token:leo002:user_id:app_platform 3181538941002:web
+set access_token:leo3181538941001:user_id:app_platform 3181538941001:web
+set access_token:leo3181538941002:user_id:app_platform 3181538941002:web
 ```
 
 The separator is three newline characters after the MySQL statement: one ends
@@ -127,7 +137,7 @@ Return an error and write no generated output when:
 Focused tests must cover:
 
 - Inclusive generation for `'3181538941{001,010}'`.
-- Zero padding in UID, username, email, Redis key, and Redis value.
+- Complete zero-padded UID in username, email, Redis key, and Redis value.
 - The default and explicitly supplied token prefixes.
 - Exactly two empty lines between the MySQL and Redis blocks.
 - Invalid template, reversed range, overflowing UID, and invalid token prefix.
@@ -137,6 +147,6 @@ Run `go test ./cmd/...` and `git diff --check` before completion.
 ## Deliberate Limits
 
 The command generates one fixed MindCraft test-user shape. It does not accept a
-source row, customize individual columns, check existing IDs or emails, or
-execute the generated commands. Add those capabilities only if a real reuse
-case requires them.
+source row, customize individual columns, check existing IDs or emails, make
+repeated execution idempotent, or execute the generated commands. Add those
+capabilities only if a real reuse case requires them.
