@@ -10,7 +10,7 @@ Redis.
 ## Command
 
 ```bash
-leo mc-uids --uid '3181538941{001,010}' [--token-prefix leo]
+leo mc-uids --uid '3181538941{001,010}' [--token-prefix leo] [--phone-prefix 12345678]
 ```
 
 - `--uid` is required and has the exact form `<numeric-prefix>{NNN,NNN}`.
@@ -18,6 +18,8 @@ leo mc-uids --uid '3181538941{001,010}' [--token-prefix leo]
   through `999`.
 - The start must not exceed the end.
 - `--token-prefix` defaults to `leo` and must be non-empty with no whitespace.
+- `--phone-prefix` defaults to `12345678` and must contain between 1 and 252
+  decimal digits, leaving room for the three-digit suffix in `phone`.
 - The UID template must be quoted in the shell so brace expansion does not
   alter it before Cobra receives the value.
 
@@ -33,18 +35,23 @@ for each generated suffix:
 - `id`: numeric prefix plus the zero-padded three-digit suffix.
 - `username`: `leot1u` plus the complete generated UID.
 - `email`: `leot1u` plus the complete generated UID plus `@hakko.ai`.
+- `phone`: the phone prefix plus the UID's zero-padded three-digit suffix,
+  quoted as a SQL string.
+- `country_code`: `'86'`.
+- `is_phone_verified`: `1`.
 - `account_type`: `0`, for a local platform account.
 - `other_platform_uid`: `NULL`, so generated users do not share an external
   login identity.
+- `character_being_used`: `2`.
 - `created_at` and `updated_at`: `NOW()`.
 
-All remaining values stay fixed:
+The resulting row shape is:
 
 ```text
 hashed_password = $2b$12$ccC5ZsvGLPBYE8OcI3D6qeu/nGQuwIvB1YtnHK185XljLwlSPOJ/a
-country_code = ''
-phone = NULL
-is_phone_verified = 0
+country_code = '86'
+phone = <phone-prefix><suffix>
+is_phone_verified = 1
 is_active = 1
 is_superuser = 0
 invited_by = 1
@@ -52,7 +59,7 @@ invitation_limit = 0
 is_email_verified = 1
 is_institution = 0
 register_device_identifier = 299332346848754281711
-character_being_used = 22
+character_being_used = 2
 is_cyber = 0
 character_language = en
 source = HakkoAI-v0.5.8.1-Install.exe
@@ -89,8 +96,9 @@ The complete UID keeps generated emails distinct when separate batches reuse
 the same three-digit suffixes with different numeric prefixes. Re-running an
 identical or overlapping UID range still fails on the `id` primary key and
 unique `email` index, which is intentional; do not emit `INSERT IGNORE` or an
-upsert. `phone = NULL` may be repeated under MySQL's unique-index semantics.
-The remaining repeated fixed values are not unique keys in the supplied DDL.
+upsert. Because `phone` also has a unique index and only uses the three-digit
+suffix, batches that reuse suffixes must use different phone prefixes. The
+remaining repeated fixed values are not unique keys in the supplied DDL.
 
 ## Redis Output
 
@@ -139,8 +147,10 @@ Focused tests must cover:
 - Inclusive generation for `'3181538941{001,010}'`.
 - Complete zero-padded UID in username, email, Redis key, and Redis value.
 - The default and explicitly supplied token prefixes.
+- Phone generation with the default and an explicitly supplied phone prefix.
 - Exactly two empty lines between the MySQL and Redis blocks.
-- Invalid template, reversed range, overflowing UID, and invalid token prefix.
+- Invalid template, reversed range, overflowing UID, invalid token prefix, and
+  empty, non-numeric, or overlong phone prefix.
 
 Run `go test ./cmd/...` and `git diff --check` before completion.
 
