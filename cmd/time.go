@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var timeToZone string
+var (
+	timeFromZone string
+	timeToZone   string
+)
 
 var timeCmd = &cobra.Command{
 	Use:   "time [VALUE]",
@@ -22,16 +25,21 @@ var timeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return runTime(args, timeToZone, cfg, cmd.OutOrStdout(), stdtime.Now)
+		return runTime(args, timeFromZone, timeToZone, cfg, cmd.OutOrStdout(), stdtime.Now)
 	},
 }
 
 func init() {
+	timeCmd.Flags().StringVar(&timeFromZone, "from", "+8", "Input timezone for dates without an explicit timezone")
 	timeCmd.Flags().StringVar(&timeToZone, "to", "+8", "Output timezone, for example +8, +9, or Asia/Tokyo")
 	rootCmd.AddCommand(timeCmd)
 }
 
-func runTime(args []string, toZone string, cfg config.Config, stdout io.Writer, now func() stdtime.Time) error {
+func runTime(args []string, fromZone, toZone string, cfg config.Config, stdout io.Writer, now func() stdtime.Time) error {
+	fromLoc, _, err := parseTimeZone(fromZone)
+	if err != nil {
+		return err
+	}
 	loc, label, err := parseTimeZone(toZone)
 	if err != nil {
 		return err
@@ -39,7 +47,7 @@ func runTime(args []string, toZone string, cfg config.Config, stdout io.Writer, 
 	parsed := now()
 	if len(args) > 0 {
 		value := strings.Join(args, " ")
-		parsed, err = parseTimeValue(value, fixedZone(8))
+		parsed, err = parseTimeValue(value, fromLoc)
 		if err != nil {
 			return err
 		}
