@@ -19,6 +19,9 @@ time:
     - +9
     - +0
     - America/Los_Angeles
+clipboard:
+  base_url: https://clipboard.example.com
+  token: replace-with-a-long-random-token
 proj:
   mc:
     match: demo_01
@@ -38,6 +41,10 @@ proj:
 ## `time`
 
 `time.zones` lists extra timezone rows printed after the primary `leo time` result. Each entry may be a UTC offset such as `+9` or an IANA timezone name.
+
+## `clipboard`
+
+`clipboard.base_url` points to the Maccy server. `leo clip` requests its `/v1/entries` endpoint. `clipboard.token` is the matching bearer secret from the server's `auth` map. Use a long random value and restrict the configuration file permissions.
 
 ## `proj`
 

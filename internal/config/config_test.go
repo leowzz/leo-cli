@@ -27,6 +27,9 @@ func TestEnsureCreatesDefaultConfig(t *testing.T) {
 	if !reflect.DeepEqual(cfg.Time.Zones, wantZones) {
 		t.Fatalf("time zones = %#v, want %#v", cfg.Time.Zones, wantZones)
 	}
+	if cfg.Clipboard.BaseURL != "http://127.0.0.1:8080" || cfg.Clipboard.Token != "" {
+		t.Fatalf("clipboard config = %#v", cfg.Clipboard)
+	}
 }
 
 func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
@@ -51,7 +54,7 @@ func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
 
 func TestLoadYAML(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\ntime:\n  zones:\n    - +9\n    - +0\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: https://clip.example.com\n  token: secret-token\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -76,6 +79,9 @@ func TestLoadYAML(t *testing.T) {
 	wantZones := []string{"+9", "+0"}
 	if !reflect.DeepEqual(cfg.Time.Zones, wantZones) {
 		t.Fatalf("time zones = %#v, want %#v", cfg.Time.Zones, wantZones)
+	}
+	if cfg.Clipboard.BaseURL != "https://clip.example.com" || cfg.Clipboard.Token != "secret-token" {
+		t.Fatalf("clipboard config = %#v", cfg.Clipboard)
 	}
 }
 

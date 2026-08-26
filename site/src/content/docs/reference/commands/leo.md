@@ -22,6 +22,7 @@ leo [flags]
 
 ### SEE ALSO
 
+* [leo clip](../leo_clip/)	 - Search remote clipboard history
 * [leo completion](../leo_completion/)	 - Generate the autocompletion script for the specified shell
 * [leo docker](../leo_docker/)	 - Docker registry helpers
 * [leo join](../leo_join/)	 - Build a SQL IN value list from file or clipboard

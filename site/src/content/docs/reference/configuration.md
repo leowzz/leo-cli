@@ -19,6 +19,9 @@ time:
     - +9
     - +0
     - America/Los_Angeles
+clipboard:
+  base_url: https://clipboard.example.com
+  token: replace-with-a-long-random-token
 proj:
   mc:
     match: demo_01
@@ -38,6 +41,10 @@ proj:
 ## `time`
 
 `time.zones` 是 `leo time` 主要结果之后额外打印的时区列表。每项可以是 `+9` 形式的 UTC offset 或 IANA 时区名。
+
+## `clipboard`
+
+`clipboard.base_url` 是 Maccy server 的地址，`leo clip` 会请求其 `/v1/entries` 接口。`clipboard.token` 是服务端 `auth` 中对应的 bearer secret。建议使用足够长的随机值，并限制配置文件权限。
 
 ## `proj`
 
