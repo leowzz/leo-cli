@@ -10,10 +10,11 @@ import (
 )
 
 type Config struct {
-	Repo     RepoConfig               `yaml:"repo"`
-	Docker   DockerConfig             `yaml:"docker"`
-	Time     TimeConfig               `yaml:"time"`
-	Projects map[string]ProjectConfig `yaml:"proj"`
+	Repo      RepoConfig               `yaml:"repo"`
+	Docker    DockerConfig             `yaml:"docker"`
+	Time      TimeConfig               `yaml:"time"`
+	Clipboard ClipboardConfig          `yaml:"clipboard"`
+	Projects  map[string]ProjectConfig `yaml:"proj"`
 }
 
 type RepoConfig struct {
@@ -26,6 +27,11 @@ type DockerConfig struct {
 
 type TimeConfig struct {
 	Zones []string `yaml:"zones"`
+}
+
+type ClipboardConfig struct {
+	BaseURL string `yaml:"base_url"`
+	Token   string `yaml:"token"`
 }
 
 type ProjectConfig struct {
@@ -56,7 +62,7 @@ func Ensure(path string) error {
 		return err
 	}
 
-	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\ntime:\n  zones:\n    - +9\n    - +0\n"), 0o644)
+	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: http://127.0.0.1:8080\n  token: \"\"\n"), 0o600)
 }
 
 func Load(path string) (Config, error) {
