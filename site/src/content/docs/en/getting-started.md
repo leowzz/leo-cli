@@ -63,4 +63,4 @@ For bash:
 eval "$(leo shell init bash)"
 ```
 
-Add the matching command to `~/.zshrc` or `~/.bashrc`. You can then run `repo` to select a repository and change directory. Continue with [Navigate Repositories](./guides/repositories/) or browse the [command reference](./reference/commands/leo/).
+Add the matching command to `~/.zshrc` or `~/.bashrc`. You can then run `repo` to select a repository and change directory. The zsh initialization script also enables completion for the `leo` command. Continue with [Navigate Repositories](./guides/repositories/) or browse the [command reference](./reference/commands/leo/).

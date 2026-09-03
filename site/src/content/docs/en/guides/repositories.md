@@ -28,4 +28,4 @@ eval "$(leo shell init zsh)"
 repo
 ```
 
-`leo shell init zsh` and `leo shell init bash` print a small `repo` function. The function captures `leo repo` output and runs `cd` only when the path is non-empty. Add the `eval` line to the matching shell startup file to enable it permanently.
+`leo shell init zsh` and `leo shell init bash` print a small `repo` function. The function captures `leo repo` output and runs `cd` only when the path is non-empty. The zsh version also initializes completion when needed and loads completion for the `leo` command. Add the `eval` line to the matching shell startup file to enable it permanently.
