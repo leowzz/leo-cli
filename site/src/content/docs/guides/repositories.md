@@ -28,4 +28,4 @@ eval "$(leo shell init zsh)"
 repo
 ```
 
-`leo shell init zsh` 和 `leo shell init bash` 打印一个小型 `repo` 函数。该函数捕获 `leo repo` 的输出，并只在路径非空时执行 `cd`。把 `eval` 行加入对应 shell 的启动文件可永久启用它。
+`leo shell init zsh` 和 `leo shell init bash` 打印一个小型 `repo` 函数。该函数捕获 `leo repo` 的输出，并只在路径非空时执行 `cd`。zsh 版本还会按需初始化补全系统并载入 `leo` 命令补全。把 `eval` 行加入对应 shell 的启动文件可永久启用它。

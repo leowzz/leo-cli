@@ -63,4 +63,4 @@ bash 用户运行：
 eval "$(leo shell init bash)"
 ```
 
-把对应命令加入 `~/.zshrc` 或 `~/.bashrc`，之后运行 `repo` 即可选择仓库并切换目录。继续阅读[快速切换仓库](./guides/repositories/)或查看[命令参考](./reference/commands/leo/)。
+把对应命令加入 `~/.zshrc` 或 `~/.bashrc`，之后运行 `repo` 即可选择仓库并切换目录。zsh 初始化脚本还会启用 `leo` 命令的自动补全。继续阅读[快速切换仓库](./guides/repositories/)或查看[命令参考](./reference/commands/leo/)。
