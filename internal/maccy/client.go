@@ -36,6 +36,7 @@ type SearchMode string
 const (
 	SearchContains SearchMode = "contains"
 	SearchFuzzy    SearchMode = "fuzzy"
+	SearchHybrid   SearchMode = "hybrid"
 )
 
 type SearchParams struct {
@@ -97,14 +98,17 @@ func (c *Client) Search(ctx context.Context, params SearchParams) (SearchRespons
 	if params.Mode == "" {
 		params.Mode = SearchContains
 	}
-	if params.Mode != SearchContains && params.Mode != SearchFuzzy {
-		return SearchResponse{}, fmt.Errorf("mode must be contains or fuzzy")
+	if params.Mode != SearchContains && params.Mode != SearchFuzzy && params.Mode != SearchHybrid {
+		return SearchResponse{}, fmt.Errorf("mode must be contains, fuzzy, or hybrid")
 	}
 	if utf8.RuneCountInString(params.Query) > 256 {
 		return SearchResponse{}, errors.New("q must not exceed 256 characters")
 	}
 	if params.Mode == SearchFuzzy && utf8.RuneCountInString(params.Query) < 3 {
 		return SearchResponse{}, errors.New("fuzzy search requires q to contain at least 3 characters")
+	}
+	if params.Mode == SearchHybrid && strings.TrimSpace(params.Query) == "" {
+		return SearchResponse{}, errors.New("hybrid search requires a non-empty q")
 	}
 
 	requestURL := *c.entriesURL

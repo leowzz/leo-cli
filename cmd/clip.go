@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -17,6 +18,7 @@ import (
 
 var (
 	clipFuzzy bool
+	clipMix   bool
 	clipLimit int
 )
 
@@ -40,6 +42,7 @@ var clipCmd = &cobra.Command{
 			client,
 			query,
 			clipFuzzy,
+			clipMix,
 			clipLimit,
 			cmd.OutOrStdout(),
 			runClipboardPicker,
@@ -50,7 +53,9 @@ var clipCmd = &cobra.Command{
 
 func init() {
 	clipCmd.Flags().BoolVar(&clipFuzzy, "fuzzy", false, "Use fuzzy search (requires at least 3 query characters)")
+	clipCmd.Flags().BoolVarP(&clipMix, "mix", "m", false, "Use semantic and full-text hybrid search")
 	clipCmd.Flags().IntVarP(&clipLimit, "limit", "n", maccy.DefaultLimit, "Maximum number of entries to load")
+	clipCmd.MarkFlagsMutuallyExclusive("fuzzy", "mix")
 	rootCmd.AddCommand(clipCmd)
 }
 
@@ -65,14 +70,20 @@ func runClipboardSearch(
 	searcher clipboardSearcher,
 	query string,
 	fuzzy bool,
+	mix bool,
 	limit int,
 	stdout io.Writer,
 	pick clipboardPicker,
 	writeClipboard func(string) error,
 ) error {
+	if fuzzy && mix {
+		return errors.New("--fuzzy and --mix cannot be used together")
+	}
 	mode := maccy.SearchContains
 	if fuzzy {
 		mode = maccy.SearchFuzzy
+	} else if mix {
+		mode = maccy.SearchHybrid
 	}
 	result, err := searcher.Search(ctx, maccy.SearchParams{Query: query, Mode: mode, Limit: limit})
 	if err != nil {

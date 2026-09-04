@@ -37,11 +37,24 @@ func TestClipCommandHasClipboardAlias(t *testing.T) {
 	}
 }
 
+func TestClipCommandHasMixFlag(t *testing.T) {
+	flag := clipCmd.Flags().Lookup("mix")
+	if flag == nil {
+		t.Fatal("clip command is missing --mix flag")
+	}
+	if got, want := flag.Shorthand, "m"; got != want {
+		t.Fatalf("mix shorthand = %q, want %q", got, want)
+	}
+	if flag := clipCmd.Flags().Lookup("hybrid"); flag != nil {
+		t.Fatalf("clip command should not expose --hybrid flag")
+	}
+}
+
 func TestRunClipboardSearchUsesFuzzyModeAndCopiesSelection(t *testing.T) {
 	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "selected"}}}}
 	var stdout bytes.Buffer
 	var copied string
-	err := runClipboardSearch(context.Background(), searcher, "sel", true, 20, &stdout,
+	err := runClipboardSearch(context.Background(), searcher, "sel", true, false, 20, &stdout,
 		func(entries []maccy.Entry) (maccy.Entry, bool, error) {
 			if len(entries) != 1 {
 				t.Fatalf("entries = %#v", entries)
@@ -59,6 +72,28 @@ func TestRunClipboardSearchUsesFuzzyModeAndCopiesSelection(t *testing.T) {
 	}
 	if copied != "selected" || stdout.String() != "已复制到剪贴板\n" {
 		t.Fatalf("copied = %q, stdout = %q", copied, stdout.String())
+	}
+}
+
+func TestRunClipboardSearchUsesMixMode(t *testing.T) {
+	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "selected"}}}}
+	err := runClipboardSearch(context.Background(), searcher, "semantic query", false, true, 20, &bytes.Buffer{},
+		func(entries []maccy.Entry) (maccy.Entry, bool, error) { return entries[0], true, nil },
+		func(string) error { return nil },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if searcher.params.Mode != maccy.SearchHybrid {
+		t.Fatalf("search mode = %q, want %q", searcher.params.Mode, maccy.SearchHybrid)
+	}
+}
+
+func TestRunClipboardSearchRejectsConflictingModes(t *testing.T) {
+	searcher := &fakeClipboardSearcher{}
+	err := runClipboardSearch(context.Background(), searcher, "query", true, true, 20, &bytes.Buffer{}, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "cannot be used together") {
+		t.Fatalf("error = %v", err)
 	}
 }
 
@@ -82,7 +117,7 @@ func TestRunClipboardSearchHandlesEmptyAndCancel(t *testing.T) {
 					return maccy.Entry{}, false, nil
 				}
 			}
-			if err := runClipboardSearch(context.Background(), searcher, "", false, 50, &stdout, pick, func(string) error { return nil }); err != nil {
+			if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, &stdout, pick, func(string) error { return nil }); err != nil {
 				t.Fatal(err)
 			}
 			if stdout.String() != test.want {
@@ -95,7 +130,7 @@ func TestRunClipboardSearchHandlesEmptyAndCancel(t *testing.T) {
 func TestRunClipboardSearchPropagatesErrors(t *testing.T) {
 	wantErr := errors.New("search failed")
 	searcher := &fakeClipboardSearcher{err: wantErr}
-	if err := runClipboardSearch(context.Background(), searcher, "", false, 50, &bytes.Buffer{}, nil, nil); !errors.Is(err, wantErr) {
+	if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, &bytes.Buffer{}, nil, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("error = %v, want %v", err, wantErr)
 	}
 }

@@ -23,12 +23,16 @@ clipboard:
 leo clip
 ```
 
-也可以传入包含搜索或使用模糊搜索：
+也可以传入包含搜索、模糊搜索或基于 Zvec 的语义与全文混合搜索：
 
 ```bash
 leo clip kubernetes
 leo clip kubernets --fuzzy
+leo clip "Go 本地向量数据库" --mix
+leo cb -m "Go 本地向量数据库"
 leo cb kubernetes
 ```
+
+`-m` / `--mix` 需要 Maccy server 启用 Zvec，并且必须提供非空查询，用于语义与全文混合检索。`-m` / `--mix` 与 `--fuzzy` 不能同时使用。
 
 选择记录后按 Enter 复制，Esc 或 Ctrl-C 取消。`--limit`（或 `-n`）控制加载的最大条目数，范围是 1 到 200，默认 50。

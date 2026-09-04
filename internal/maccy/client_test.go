@@ -69,6 +69,24 @@ func TestSearchReportsAPIErrorWithoutLeakingToken(t *testing.T) {
 	}
 }
 
+func TestSearchSendsHybridMode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("mode"); got != "hybrid" {
+			t.Errorf("mode = %q, want hybrid", got)
+		}
+		_, _ = w.Write([]byte(`{"entries":[]}`))
+	}))
+	defer server.Close()
+
+	client, err := New(server.URL, "test-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Search(context.Background(), SearchParams{Query: "semantic query", Mode: SearchHybrid}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNewValidatesClipboardConfiguration(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -100,6 +118,7 @@ func TestSearchValidatesParametersBeforeRequest(t *testing.T) {
 		{Limit: MaxLimit + 1},
 		{Mode: "other"},
 		{Mode: SearchFuzzy, Query: "ab"},
+		{Mode: SearchHybrid, Query: "  "},
 	} {
 		_, err := client.Search(context.Background(), params)
 		if err == nil {
