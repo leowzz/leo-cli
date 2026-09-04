@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,9 +18,11 @@ type fakeClipboardSearcher struct {
 	params maccy.SearchParams
 	result maccy.SearchResponse
 	err    error
+	calls  int
 }
 
 func (f *fakeClipboardSearcher) Search(_ context.Context, params maccy.SearchParams) (maccy.SearchResponse, error) {
+	f.calls++
 	f.params = params
 	return f.result, f.err
 }
@@ -59,7 +62,7 @@ func TestRunClipboardSearchUsesFuzzyModeAndCopiesSelection(t *testing.T) {
 	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "selected"}}}}
 	var stdout bytes.Buffer
 	var copied string
-	err := runClipboardSearch(context.Background(), searcher, "sel", true, false, 20, &stdout,
+	err := runClipboardSearch(context.Background(), searcher, "sel", true, false, 20, 100*time.Millisecond, &stdout,
 		func(entries []maccy.Entry, _ clipboardPickerOptions) (maccy.Entry, bool, error) {
 			if len(entries) != 1 {
 				t.Fatalf("entries = %#v", entries)
@@ -82,10 +85,14 @@ func TestRunClipboardSearchUsesFuzzyModeAndCopiesSelection(t *testing.T) {
 
 func TestRunClipboardSearchUsesMixMode(t *testing.T) {
 	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "selected"}}}}
-	err := runClipboardSearch(context.Background(), searcher, "semantic query", false, true, 20, &bytes.Buffer{},
+	const searchInterval = 250 * time.Millisecond
+	err := runClipboardSearch(context.Background(), searcher, "semantic query", false, true, 20, searchInterval, &bytes.Buffer{},
 		func(entries []maccy.Entry, options clipboardPickerOptions) (maccy.Entry, bool, error) {
 			if options.mode != maccy.SearchHybrid {
 				t.Fatalf("picker mode = %q, want %q", options.mode, maccy.SearchHybrid)
+			}
+			if options.interval != searchInterval {
+				t.Fatalf("picker search interval = %s, want %s", options.interval, searchInterval)
 			}
 			return entries[0], true, nil
 		},
@@ -101,7 +108,7 @@ func TestRunClipboardSearchUsesMixMode(t *testing.T) {
 
 func TestRunClipboardSearchRejectsConflictingModes(t *testing.T) {
 	searcher := &fakeClipboardSearcher{}
-	err := runClipboardSearch(context.Background(), searcher, "query", true, true, 20, &bytes.Buffer{}, nil, nil)
+	err := runClipboardSearch(context.Background(), searcher, "query", true, true, 20, 100*time.Millisecond, &bytes.Buffer{}, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "cannot be used together") {
 		t.Fatalf("error = %v", err)
 	}
@@ -127,7 +134,7 @@ func TestRunClipboardSearchHandlesEmptyAndCancel(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			searcher := &fakeClipboardSearcher{result: test.result}
 			var stdout bytes.Buffer
-			if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, &stdout, test.pick, func(string) error { return nil }); err != nil {
+			if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, 100*time.Millisecond, &stdout, test.pick, func(string) error { return nil }); err != nil {
 				t.Fatal(err)
 			}
 			if stdout.String() != test.want {
@@ -139,7 +146,7 @@ func TestRunClipboardSearchHandlesEmptyAndCancel(t *testing.T) {
 
 func TestRunClipboardSearchUsesRecentEntriesButKeepsMixDefaultForEmptyQuery(t *testing.T) {
 	searcher := &fakeClipboardSearcher{}
-	err := runClipboardSearch(context.Background(), searcher, "", false, true, 20, &bytes.Buffer{},
+	err := runClipboardSearch(context.Background(), searcher, "", false, true, 20, 100*time.Millisecond, &bytes.Buffer{},
 		func(_ []maccy.Entry, options clipboardPickerOptions) (maccy.Entry, bool, error) {
 			if options.mode != maccy.SearchHybrid {
 				t.Fatalf("picker mode = %q, want %q", options.mode, maccy.SearchHybrid)
@@ -159,7 +166,7 @@ func TestRunClipboardSearchUsesRecentEntriesButKeepsMixDefaultForEmptyQuery(t *t
 func TestRunClipboardSearchPropagatesErrors(t *testing.T) {
 	wantErr := errors.New("search failed")
 	searcher := &fakeClipboardSearcher{err: wantErr}
-	if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, &bytes.Buffer{}, nil, nil); !errors.Is(err, wantErr) {
+	if err := runClipboardSearch(context.Background(), searcher, "", false, false, 50, 100*time.Millisecond, &bytes.Buffer{}, nil, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("error = %v, want %v", err, wantErr)
 	}
 }
@@ -266,6 +273,121 @@ func TestClipboardPickerAllowsMInSearchInput(t *testing.T) {
 	if got := model.list.FilterValue(); got != "m" {
 		t.Fatalf("filter value = %q, want m", got)
 	}
+}
+
+func TestClipboardEntryFilterMatchesRenderedTitle(t *testing.T) {
+	model := newClipboardPickerModel([]maccy.Entry{{PlainText: "prefix\n\nsub-agent"}}, clipboardPickerOptions{})
+	model.list.SetFilterText("subagent")
+
+	title := []rune(model.list.Items()[0].(clipboardEntryItem).Title())
+	var matched strings.Builder
+	for _, index := range model.list.MatchesForItem(0) {
+		if index >= len(title) {
+			t.Fatalf("match index %d exceeds rendered title %q", index, string(title))
+		}
+		matched.WriteRune(title[index])
+	}
+	if got, want := matched.String(), "subagent"; got != want {
+		t.Fatalf("highlighted characters = %q, want %q in title %q", got, want, string(title))
+	}
+}
+
+func TestClipboardPickerDebouncesRemoteSearch(t *testing.T) {
+	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "related result"}}}}
+	model := newClipboardPickerModel([]maccy.Entry{{PlainText: "recent result"}}, clipboardPickerOptions{
+		searcher: searcher,
+		mode:     maccy.SearchHybrid,
+		interval: time.Millisecond,
+	})
+	model.list.SetFilterState(list.Filtering)
+
+	updated, firstCmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model = updated.(clipboardPickerModel)
+	firstInterval := clipboardSearchIntervalFromCmd(t, firstCmd)
+	updated, secondCmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}})
+	model = updated.(clipboardPickerModel)
+	secondInterval := clipboardSearchIntervalFromCmd(t, secondCmd)
+
+	updated, staleCmd := model.Update(firstInterval)
+	model = updated.(clipboardPickerModel)
+	if staleCmd != nil || searcher.calls != 0 {
+		t.Fatalf("stale interval started search: cmd=%v calls=%d", staleCmd, searcher.calls)
+	}
+	updated, searchCmd := model.Update(secondInterval)
+	model = updated.(clipboardPickerModel)
+	if searchCmd == nil || !model.searching {
+		t.Fatalf("latest interval did not start search: cmd=%v searching=%v", searchCmd, model.searching)
+	}
+	updated, filterCmd := model.Update(searchCmd())
+	model = updated.(clipboardPickerModel)
+	if filterCmd != nil {
+		updated, _ = model.Update(filterCmd())
+		model = updated.(clipboardPickerModel)
+	}
+
+	if searcher.calls != 1 || searcher.params.Query != "su" || searcher.params.Mode != maccy.SearchHybrid {
+		t.Fatalf("search calls/params = %d/%#v", searcher.calls, searcher.params)
+	}
+	if got := model.list.FilterValue(); got != "su" || !model.list.SettingFilter() {
+		t.Fatalf("filter value/state = %q/%s, want su/filtering", got, model.list.FilterState())
+	}
+	if got := model.list.VisibleItems()[0].(clipboardEntryItem).entry.PlainText; got != "related result" {
+		t.Fatalf("visible result = %q, want related result", got)
+	}
+}
+
+func TestClipboardPickerDoesNotSearchEmptyText(t *testing.T) {
+	searcher := &fakeClipboardSearcher{}
+	model := newClipboardPickerModel(nil, clipboardPickerOptions{searcher: searcher})
+	model.list.SetFilterState(list.Filtering)
+
+	updated, cmd := model.Update(clipboardSearchIntervalMsg{revision: model.revision})
+	model = updated.(clipboardPickerModel)
+	if cmd != nil || model.searching || searcher.calls != 0 {
+		t.Fatalf("empty text started search: cmd=%v searching=%v calls=%d", cmd, model.searching, searcher.calls)
+	}
+}
+
+func TestClipboardPickerIgnoresStaleSearchResult(t *testing.T) {
+	searcher := &fakeClipboardSearcher{result: maccy.SearchResponse{Entries: []maccy.Entry{{PlainText: "stale result"}}}}
+	model := newClipboardPickerModel([]maccy.Entry{{PlainText: "current result"}}, clipboardPickerOptions{searcher: searcher})
+	model, searchCmd := model.startClipboardSearch("old", maccy.SearchHybrid)
+	model.list.SetFilterState(list.Filtering)
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model = updated.(clipboardPickerModel)
+
+	updated, _ = model.Update(searchCmd())
+	model = updated.(clipboardPickerModel)
+	if got := model.list.Items()[0].(clipboardEntryItem).entry.PlainText; got != "current result" {
+		t.Fatalf("first result = %q, want current result", got)
+	}
+}
+
+func clipboardSearchIntervalFromCmd(t *testing.T, cmd tea.Cmd) clipboardSearchIntervalMsg {
+	t.Helper()
+	for _, msg := range runTeaCmd(cmd) {
+		if interval, ok := msg.(clipboardSearchIntervalMsg); ok {
+			return interval
+		}
+	}
+	t.Fatal("command did not produce a clipboard search interval message")
+	return clipboardSearchIntervalMsg{}
+}
+
+func runTeaCmd(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	msg := cmd()
+	batch, ok := msg.(tea.BatchMsg)
+	if !ok {
+		return []tea.Msg{msg}
+	}
+	var messages []tea.Msg
+	for _, batchCmd := range batch {
+		messages = append(messages, runTeaCmd(batchCmd)...)
+	}
+	return messages
 }
 
 func TestClipboardPickerFitsTerminalHeight(t *testing.T) {

@@ -11,9 +11,10 @@ Add the Maccy server address and bearer token to `~/.config/leo-cli/config.yaml`
 clipboard:
   base_url: http://127.0.0.1:8080
   token: replace-with-a-long-random-token
+  search_interval: 100ms
 ```
 
-Do not include `/v1/entries` in `base_url`; the command appends the endpoint path. The token must match a secret in the Maccy server `auth` map.
+Do not include `/v1/entries` in `base_url`; the command appends the endpoint path. The token must match a secret in the Maccy server `auth` map. `search_interval` is the debounce delay after TUI input stops; it defaults to `100ms` when omitted.
 
 ## Search And Copy
 
@@ -35,6 +36,6 @@ leo cb kubernetes --mix=false
 
 `-m` / `--mix` explicitly enables hybrid search, which is already the default. Use `--mix=false` to start with regular contains search. Hybrid search requires Zvec to be enabled on the Maccy server and a non-empty query. `--mix` cannot be combined with `--fuzzy`.
 
-In the TUI, press `/`, enter a new remote query, and press Enter to search. While browsing results, press `m` to rerun the current query in regular or hybrid mode. The current mode and query appear above the list. Press Enter on a result to copy it; Esc or Ctrl-C cancels.
+In the TUI, press `/` and enter a new remote query. A non-empty query runs automatically after no input arrives for `search_interval`; press Enter to search immediately and return to browsing results. While browsing results, press `m` to rerun the current query in regular or hybrid mode. The current mode and query appear above the list. Press Enter on a result to copy it; Esc or Ctrl-C cancels.
 
 `--limit` (or `-n`) controls the maximum number of entries loaded per search, from 1 to 200, with a default of 50.

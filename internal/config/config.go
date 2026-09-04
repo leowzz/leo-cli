@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+const DefaultClipboardSearchInterval = 100 * time.Millisecond
 
 type Config struct {
 	Repo      RepoConfig               `yaml:"repo"`
@@ -30,8 +33,9 @@ type TimeConfig struct {
 }
 
 type ClipboardConfig struct {
-	BaseURL string `yaml:"base_url"`
-	Token   string `yaml:"token"`
+	BaseURL        string        `yaml:"base_url"`
+	Token          string        `yaml:"token"`
+	SearchInterval time.Duration `yaml:"search_interval"`
 }
 
 type ProjectConfig struct {
@@ -62,7 +66,7 @@ func Ensure(path string) error {
 		return err
 	}
 
-	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: http://127.0.0.1:8080\n  token: \"\"\n"), 0o600)
+	return os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: http://127.0.0.1:8080\n  token: \"\"\n  search_interval: 100ms\n"), 0o600)
 }
 
 func Load(path string) (Config, error) {
@@ -71,9 +75,12 @@ func Load(path string) (Config, error) {
 		return Config{}, err
 	}
 
-	var cfg Config
+	cfg := Config{Clipboard: ClipboardConfig{SearchInterval: DefaultClipboardSearchInterval}}
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return Config{}, err
+	}
+	if cfg.Clipboard.SearchInterval <= 0 {
+		cfg.Clipboard.SearchInterval = DefaultClipboardSearchInterval
 	}
 	return cfg, nil
 }

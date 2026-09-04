@@ -22,6 +22,7 @@ time:
 clipboard:
   base_url: https://clipboard.example.com
   token: replace-with-a-long-random-token
+  search_interval: 100ms
 proj:
   mc:
     match: demo_01
@@ -44,7 +45,7 @@ proj:
 
 ## `clipboard`
 
-`clipboard.base_url` 是 Maccy server 的地址，`leo clip` 会请求其 `/v1/entries` 接口。`clipboard.token` 是服务端 `auth` 中对应的 bearer secret。建议使用足够长的随机值，并限制配置文件权限。
+`clipboard.base_url` 是 Maccy server 的地址，`leo clip` 会请求其 `/v1/entries` 接口。`clipboard.token` 是服务端 `auth` 中对应的 bearer secret。`clipboard.search_interval` 控制 TUI 输入停止后自动搜索的防抖间隔，默认是 `100ms`。建议使用足够长的随机 token，并限制配置文件权限。
 
 ## `proj`
 

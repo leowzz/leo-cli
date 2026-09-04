@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/leo/leo-cli/internal/config"
 	"github.com/leo/leo-cli/internal/maccy"
 	"github.com/leo/leo-cli/internal/termio"
 	"github.com/spf13/cobra"
@@ -44,6 +46,7 @@ var clipCmd = &cobra.Command{
 			clipFuzzy,
 			clipMix && !clipFuzzy,
 			clipLimit,
+			cfg.Clipboard.SearchInterval,
 			cmd.OutOrStdout(),
 			runClipboardPicker,
 			clipboard.WriteAll,
@@ -69,6 +72,7 @@ type clipboardPickerOptions struct {
 	query    string
 	mode     maccy.SearchMode
 	limit    int
+	interval time.Duration
 }
 
 type clipboardPicker func([]maccy.Entry, clipboardPickerOptions) (maccy.Entry, bool, error)
@@ -80,6 +84,7 @@ func runClipboardSearch(
 	fuzzy bool,
 	mix bool,
 	limit int,
+	searchInterval time.Duration,
 	stdout io.Writer,
 	pick clipboardPicker,
 	writeClipboard func(string) error,
@@ -108,6 +113,7 @@ func runClipboardSearch(
 		query:    query,
 		mode:     preferredMode,
 		limit:    limit,
+		interval: searchInterval,
 	})
 	if err != nil {
 		return err
@@ -130,6 +136,8 @@ type clipboardPickerModel struct {
 	query       string
 	mode        maccy.SearchMode
 	limit       int
+	interval    time.Duration
+	revision    uint64
 	searching   bool
 	searchError string
 	selected    maccy.Entry
@@ -141,10 +149,16 @@ type clipboardEntryItem struct {
 }
 
 type clipboardSearchResultMsg struct {
-	entries []maccy.Entry
-	query   string
-	mode    maccy.SearchMode
-	err     error
+	entries  []maccy.Entry
+	query    string
+	mode     maccy.SearchMode
+	revision uint64
+	err      error
+}
+
+type clipboardSearchIntervalMsg struct {
+	query    string
+	revision uint64
 }
 
 func runClipboardPicker(entries []maccy.Entry, options clipboardPickerOptions) (maccy.Entry, bool, error) {
@@ -184,11 +198,15 @@ func newClipboardPickerModel(entries []maccy.Entry, options clipboardPickerOptio
 	if options.limit == 0 {
 		options.limit = maccy.DefaultLimit
 	}
+	if options.interval <= 0 {
+		options.interval = config.DefaultClipboardSearchInterval
+	}
 
 	itemsList := list.New(clipboardEntryItems(entries), list.NewDefaultDelegate(), 0, 0)
 	itemsList.Title = "Clipboard History"
 	itemsList.SetShowStatusBar(false)
 	itemsList.SetFilteringEnabled(true)
+	itemsList.Filter = clipboardSearchFilter
 	itemsList.Styles.Title = lipgloss.NewStyle().Bold(true)
 	return clipboardPickerModel{
 		list:     itemsList,
@@ -197,7 +215,21 @@ func newClipboardPickerModel(entries []maccy.Entry, options clipboardPickerOptio
 		query:    options.query,
 		mode:     options.mode,
 		limit:    options.limit,
+		interval: options.interval,
 	}
+}
+
+func clipboardSearchFilter(term string, targets []string) []list.Rank {
+	matches := list.UnsortedFilter(term, targets)
+	matchesByIndex := make(map[int][]int, len(matches))
+	for _, match := range matches {
+		matchesByIndex[match.Index] = match.MatchedIndexes
+	}
+	ranks := make([]list.Rank, len(targets))
+	for i := range targets {
+		ranks[i] = list.Rank{Index: i, MatchedIndexes: matchesByIndex[i]}
+	}
+	return ranks
 }
 
 func clipboardEntryItems(entries []maccy.Entry) []list.Item {
@@ -214,6 +246,9 @@ func (m clipboardPickerModel) Init() tea.Cmd {
 
 func (m clipboardPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if result, ok := msg.(clipboardSearchResultMsg); ok {
+		if result.revision != m.revision {
+			return m, nil
+		}
 		m.searching = false
 		if result.err != nil {
 			m.searchError = result.err.Error()
@@ -225,6 +260,13 @@ func (m clipboardPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := m.list.SetItems(clipboardEntryItems(result.entries))
 		m.list.ResetSelected()
 		return m, cmd
+	}
+	if interval, ok := msg.(clipboardSearchIntervalMsg); ok {
+		query := strings.TrimSpace(m.list.FilterValue())
+		if interval.revision != m.revision || interval.query == "" || interval.query != query || !m.list.SettingFilter() {
+			return m, nil
+		}
+		return m.startClipboardSearch(query, m.mode)
 	}
 
 	switch msg := msg.(type) {
@@ -249,7 +291,11 @@ func (m clipboardPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.list.SettingFilter() {
 				query := strings.TrimSpace(m.list.FilterValue())
-				if query == "" || m.searching {
+				if query == "" {
+					return m, nil
+				}
+				m.list.SetFilterState(list.FilterApplied)
+				if m.searching {
 					return m, nil
 				}
 				return m.startClipboardSearch(query, m.mode)
@@ -266,8 +312,24 @@ func (m clipboardPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetSize(msg.Width, maxInt(1, msg.Height-5))
 	}
 
+	wasFiltering := m.list.SettingFilter()
+	previousQuery := strings.TrimSpace(m.list.FilterValue())
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
+	if wasFiltering && m.list.SettingFilter() {
+		query := strings.TrimSpace(m.list.FilterValue())
+		if query != previousQuery {
+			m.revision++
+			m.searching = false
+			if query != "" {
+				revision := m.revision
+				interval := m.interval
+				return m, tea.Batch(cmd, tea.Tick(interval, func(time.Time) tea.Msg {
+					return clipboardSearchIntervalMsg{query: query, revision: revision}
+				}))
+			}
+		}
+	}
 	return m, cmd
 }
 
@@ -276,12 +338,13 @@ func (m clipboardPickerModel) startClipboardSearch(query string, mode maccy.Sear
 		m.searchError = "clipboard search is unavailable"
 		return m, nil
 	}
-	m.list.ResetFilter()
+	m.revision++
+	revision := m.revision
 	m.searching = true
 	m.searchError = ""
 	return m, func() tea.Msg {
 		result, err := m.searcher.Search(m.ctx, maccy.SearchParams{Query: query, Mode: mode, Limit: m.limit})
-		return clipboardSearchResultMsg{entries: result.Entries, query: query, mode: mode, err: err}
+		return clipboardSearchResultMsg{entries: result.Entries, query: query, mode: mode, revision: revision, err: err}
 	}
 }
 
@@ -321,7 +384,7 @@ func clipboardSearchModeLabel(mode maccy.SearchMode) string {
 }
 
 func (i clipboardEntryItem) FilterValue() string {
-	return i.entry.PlainText
+	return i.Title()
 }
 
 func (i clipboardEntryItem) Title() string {
