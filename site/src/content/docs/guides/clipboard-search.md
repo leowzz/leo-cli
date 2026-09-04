@@ -17,22 +17,24 @@ clipboard:
 
 ## 搜索和复制
 
-不传查询词时显示最近的剪贴板记录：
+不传查询词时显示最近的剪贴板记录；TUI 中后续搜索默认使用混合检索：
 
 ```bash
 leo clip
 ```
 
-也可以传入包含搜索、模糊搜索或基于 Zvec 的语义与全文混合搜索：
+传入查询词时默认使用基于 Zvec 的语义与全文混合搜索：
 
 ```bash
 leo clip kubernetes
 leo clip kubernets --fuzzy
 leo clip "Go 本地向量数据库" --mix
 leo cb -m "Go 本地向量数据库"
-leo cb kubernetes
+leo cb kubernetes --mix=false
 ```
 
-`-m` / `--mix` 需要 Maccy server 启用 Zvec，并且必须提供非空查询，用于语义与全文混合检索。`-m` / `--mix` 与 `--fuzzy` 不能同时使用。
+`-m` / `--mix` 用于显式开启混合检索，默认已开启；`--mix=false` 从普通包含检索开始。混合检索需要 Maccy server 启用 Zvec，并且必须提供非空查询。`--mix` 与 `--fuzzy` 不能同时使用。
 
-选择记录后按 Enter 复制，Esc 或 Ctrl-C 取消。`--limit`（或 `-n`）控制加载的最大条目数，范围是 1 到 200，默认 50。
+TUI 中按 `/` 输入新的远端查询并按 Enter 检索；浏览结果时按 `m` 使用当前查询切换普通/混合检索。当前模式和查询显示在列表上方。选择记录后按 Enter 复制，Esc 或 Ctrl-C 取消。
+
+`--limit`（或 `-n`）控制每次加载的最大条目数，范围是 1 到 200，默认 50。
