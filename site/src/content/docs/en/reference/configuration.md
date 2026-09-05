@@ -22,6 +22,7 @@ time:
 clipboard:
   base_url: https://clipboard.example.com
   token: replace-with-a-long-random-token
+  search_interval: 100ms
 proj:
   mc:
     match: demo_01
@@ -44,7 +45,7 @@ proj:
 
 ## `clipboard`
 
-`clipboard.base_url` points to the Maccy server. `leo clip` requests its `/v1/entries` endpoint. `clipboard.token` is the matching bearer secret from the server's `auth` map. Use a long random value and restrict the configuration file permissions.
+`clipboard.base_url` points to the Maccy server. `leo clip` requests its `/v1/entries` endpoint. `clipboard.token` is the matching bearer secret from the server's `auth` map. `clipboard.search_interval` controls the debounce delay after TUI input stops and defaults to `100ms`. Use a long random token and restrict the configuration file permissions.
 
 ## `proj`
 

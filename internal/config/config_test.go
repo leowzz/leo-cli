@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestEnsureCreatesDefaultConfig(t *testing.T) {
@@ -30,6 +31,9 @@ func TestEnsureCreatesDefaultConfig(t *testing.T) {
 	if cfg.Clipboard.BaseURL != "http://127.0.0.1:8080" || cfg.Clipboard.Token != "" {
 		t.Fatalf("clipboard config = %#v", cfg.Clipboard)
 	}
+	if cfg.Clipboard.SearchInterval != DefaultClipboardSearchInterval {
+		t.Fatalf("clipboard search interval = %s, want %s", cfg.Clipboard.SearchInterval, DefaultClipboardSearchInterval)
+	}
 }
 
 func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
@@ -54,7 +58,7 @@ func TestEnsureDoesNotOverwriteExistingConfig(t *testing.T) {
 
 func TestLoadYAML(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: https://clip.example.com\n  token: secret-token\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("repo:\n  roots:\n    - ~/work\n    - $PROJECTS\ndocker:\n  registries:\n    it: source-registry.example.com\n    t: mirror-registry.example.com\ntime:\n  zones:\n    - +9\n    - +0\nclipboard:\n  base_url: https://clip.example.com\n  token: secret-token\n  search_interval: 250ms\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -82,6 +86,9 @@ func TestLoadYAML(t *testing.T) {
 	}
 	if cfg.Clipboard.BaseURL != "https://clip.example.com" || cfg.Clipboard.Token != "secret-token" {
 		t.Fatalf("clipboard config = %#v", cfg.Clipboard)
+	}
+	if cfg.Clipboard.SearchInterval != 250*time.Millisecond {
+		t.Fatalf("clipboard search interval = %s, want 250ms", cfg.Clipboard.SearchInterval)
 	}
 }
 
@@ -118,6 +125,9 @@ func TestLoadWithoutProjectsIsBackwardCompatible(t *testing.T) {
 	}
 	if cfg.Projects != nil {
 		t.Fatalf("projects = %#v, want nil", cfg.Projects)
+	}
+	if cfg.Clipboard.SearchInterval != DefaultClipboardSearchInterval {
+		t.Fatalf("clipboard search interval = %s, want %s", cfg.Clipboard.SearchInterval, DefaultClipboardSearchInterval)
 	}
 }
 
