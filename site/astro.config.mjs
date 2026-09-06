@@ -25,6 +25,7 @@ export default defineConfig({
           items: [
             { slug: 'guides/join' },
             { slug: 'guides/norm' },
+            { slug: 'guides/json' },
             { slug: 'guides/clipboard-search' },
             { slug: 'guides/repositories' },
             { slug: 'guides/time' },
