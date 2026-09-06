@@ -26,6 +26,7 @@ leo [flags]
 * [leo completion](../leo_completion/)	 - Generate the autocompletion script for the specified shell
 * [leo docker](../leo_docker/)	 - Docker registry helpers
 * [leo join](../leo_join/)	 - Build a SQL IN value list from file or clipboard
+* [leo json](../leo_json/)	 - Repair and format JSON, escaped JSON, or Python dicts
 * [leo log](../leo_log/)	 - Open a temporary browser workspace for project logs
 * [leo norm](../leo_norm/)	 - Normalize clipboard code punctuation
 * [leo repo](../leo_repo/)	 - Browse indexed repositories
