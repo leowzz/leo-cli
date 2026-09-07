@@ -74,14 +74,33 @@ func TestRunJSONErrors(t *testing.T) {
 }
 
 func TestRunJSONInvalidInputDoesNotCopy(t *testing.T) {
-	for _, input := range []string{"", " \n", `{:'value'}`} {
-		var stdout bytes.Buffer
-		err := runJSON([]string{input}, nil, false, &stdout, false, true, nil, func(string) error {
-			t.Fatal("invalid input copied to clipboard")
-			return nil
-		}, nil)
-		if err == nil || stdout.Len() != 0 {
-			t.Fatalf("input %q: err = %v, stdout = %q", input, err, stdout.String())
+	for _, input := range []string{
+		"", " \n", `{:'value'}`,
+		`origin/feat/payload`,
+		`&#x20;{ const g=groups.get(e.sha)||[]; g.push(e.path); groups.set(e.sha,g); }`,
+		` { const g=groups.get(e.sha)||[]; g.push(e.path); groups.set(e.sha,g); }`,
+	} {
+		for _, source := range []string{"argument", "stdin", "clipboard"} {
+			t.Run(source+"/"+input, func(t *testing.T) {
+				var args []string
+				if source == "argument" {
+					args = []string{input}
+				}
+				var stdout bytes.Buffer
+				err := runJSON(args, strings.NewReader(input), source == "stdin", &stdout, false, true,
+					func() (string, error) { return input, nil },
+					func(string) error {
+						t.Fatal("invalid input copied to clipboard")
+						return nil
+					},
+					func(any) (any, bool, error) {
+						t.Fatal("viewer opened for invalid input")
+						return nil, false, nil
+					})
+				if err == nil || err.Error() != "内容里没有 JSON" || stdout.Len() != 0 {
+					t.Fatalf("input %q: err = %v, stdout = %q", input, err, stdout.String())
+				}
+			})
 		}
 	}
 }

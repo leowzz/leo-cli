@@ -82,4 +82,4 @@ Piped or redirected output skips the viewer by default. `--interactive` (`-i`) f
 leo json > repaired.json
 ```
 
-Repair uses the Go `jsonrepair` library, requires no Python installation, and never executes input as code. It infers intent from syntax, cannot guarantee recovery of the original meaning, and is not a complete Python expression parser. Empty or unrecoverable input exits with a nonzero status. A parse failure never overwrites the clipboard.
+Repair uses the Go `jsonrepair` library, requires no Python installation, and never executes input as code. It infers intent from syntax, cannot guarantee recovery of the original meaning, and is not a complete Python expression parser. Empty input or content from which JSON cannot be parsed, repaired, or extracted displays `内容里没有 JSON` ("No JSON found in the content") and exits with a nonzero status, without opening the viewer, writing a result, or overwriting the clipboard.

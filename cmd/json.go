@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -93,7 +94,7 @@ func runJSON(args []string, stdin io.Reader, stdinHasData bool, stdout io.Writer
 
 	value, err := payload.ParseJSON(text)
 	if err != nil {
-		return err
+		return errors.New("内容里没有 JSON")
 	}
 	if inspect != nil {
 		var accepted bool
