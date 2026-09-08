@@ -74,7 +74,11 @@ func runDockerCopy(ctx context.Context, cfg config.Config, source, destination, 
 		return nil
 	}
 
-	return runner(ctx, "skopeo", args, stdout, stderr)
+	if err := runner(ctx, "skopeo", args, stdout, stderr); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, copySpec.Destination)
+	return err
 }
 
 type copyPlatform struct {
