@@ -13,12 +13,12 @@ type Copy struct {
 	Destination string
 }
 
-func Resolve(registries map[string]string, source, destination string) (Copy, error) {
+func Resolve(registries, defaultNamespaces map[string]string, source, destination string) (Copy, error) {
 	sourceRef, err := parseSource(registries, source)
 	if err != nil {
 		return Copy{}, err
 	}
-	destinationRef, err := parseDestination(registries, destination, sourceRef)
+	destinationRef, err := parseDestination(registries, defaultNamespaces, destination, sourceRef)
 	if err != nil {
 		return Copy{}, err
 	}
@@ -120,7 +120,7 @@ func splitFullImage(value string) (reference, bool) {
 	return reference{registry: registry, repository: repository, tag: tag, raw: value}, true
 }
 
-func parseDestination(registries map[string]string, value string, source reference) (reference, error) {
+func parseDestination(registries, defaultNamespaces map[string]string, value string, source reference) (reference, error) {
 	if value == "" {
 		return reference{}, fmt.Errorf("destination image must be REGISTRY_OR_ALIAS[/REPOSITORY[:TAG]]")
 	}
@@ -141,6 +141,8 @@ func parseDestination(registries map[string]string, value string, source referen
 		}
 		destination.repository = repository
 		destination.tag = tag
+	} else if namespace := strings.Trim(defaultNamespaces[value], "/"); namespace != "" {
+		destination.repository = namespace + "/" + source.repository[strings.LastIndex(source.repository, "/")+1:]
 	}
 
 	return destination, nil

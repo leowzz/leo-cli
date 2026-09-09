@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -245,6 +247,31 @@ func TestRunDockerListPrintsEmptyMessage(t *testing.T) {
 	}
 
 	want := "No Docker registries configured.\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestRunDockerCopyDefaultNamespaceFromConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	data := "docker:\n  registries:\n    ali: registry.cn-heyuan.aliyuncs.com\n  default_namespaces:\n    ali: leo03w\n"
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	runner := func(_ context.Context, _ string, _ []string, _, _ io.Writer) error {
+		t.Fatal("runner was called in dry run")
+		return nil
+	}
+	err = runDockerCopy(context.Background(), cfg, "cxbdasheng/dnet:v2.4.3", "ali", defaultDockerCopyPlatform, true, &stdout, io.Discard, runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "skopeo copy --override-os linux --override-arch amd64 docker://cxbdasheng/dnet:v2.4.3 docker://registry.cn-heyuan.aliyuncs.com/leo03w/dnet:v2.4.3\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}

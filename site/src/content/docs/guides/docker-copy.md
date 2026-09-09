@@ -24,7 +24,22 @@ leo docker copy it/apps/example-service:v1.2.4 t/library/example-service:latest
 leo docker copy registry.example.com/app:v1 mirror.example.com/app:v1
 ```
 
-目标只写 alias 时会保留源镜像的路径和 tag。
+目标只写 alias 时，默认保留源镜像的路径和 tag。配置该 alias 的默认命名空间后，会改为使用 `命名空间/源镜像最后一级名称:tag`：
+
+```yaml
+docker:
+  registries:
+    ali: registry.cn-heyuan.aliyuncs.com
+  default_namespaces:
+    ali: leo03w
+```
+
+```bash
+leo docker copy cxbdasheng/dnet:v2.4.3 ali
+# 等同于 leo docker copy cxbdasheng/dnet:v2.4.3 ali/leo03w/dnet:v2.4.3
+```
+
+显式指定目标路径时，不使用默认命名空间。
 
 ## 检查命令和平台
 

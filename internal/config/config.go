@@ -25,7 +25,8 @@ type RepoConfig struct {
 }
 
 type DockerConfig struct {
-	Registries map[string]string `yaml:"registries"`
+	Registries        map[string]string `yaml:"registries"`
+	DefaultNamespaces map[string]string `yaml:"default_namespaces"`
 }
 
 type TimeConfig struct {

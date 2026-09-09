@@ -60,7 +60,7 @@ func init() {
 }
 
 func runDockerCopy(ctx context.Context, cfg config.Config, source, destination, platform string, dryRun bool, stdout, stderr io.Writer, runner commandRunner) error {
-	copySpec, err := dockercopy.Resolve(cfg.Docker.Registries, source, destination)
+	copySpec, err := dockercopy.Resolve(cfg.Docker.Registries, cfg.Docker.DefaultNamespaces, source, destination)
 	if err != nil {
 		return err
 	}

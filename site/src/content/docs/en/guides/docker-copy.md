@@ -24,7 +24,22 @@ leo docker copy it/apps/example-service:v1.2.4 t/library/example-service:latest
 leo docker copy registry.example.com/app:v1 mirror.example.com/app:v1
 ```
 
-When the destination is only an alias, it retains the source image path and tag.
+When the destination is only an alias, it retains the source image path and tag by default. Configure a default namespace for that alias to use `namespace/final-source-name:tag` instead:
+
+```yaml
+docker:
+  registries:
+    ali: registry.cn-heyuan.aliyuncs.com
+  default_namespaces:
+    ali: leo03w
+```
+
+```bash
+leo docker copy cxbdasheng/dnet:v2.4.3 ali
+# Equivalent to leo docker copy cxbdasheng/dnet:v2.4.3 ali/leo03w/dnet:v2.4.3
+```
+
+An explicit destination path bypasses the default namespace.
 
 ## Inspect The Command And Platform
 
